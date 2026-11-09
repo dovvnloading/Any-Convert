@@ -230,6 +230,7 @@ export function VideoWorkspace() {
             <input
               ref={picker}
               className="sr-only"
+              tabIndex={-1}
               type="file"
               accept="video/*,.mkv,.avi,.mov,.m4v,.wmv"
               aria-label="Choose video file"
