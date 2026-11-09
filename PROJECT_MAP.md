@@ -63,9 +63,11 @@ These are ordered work packages, not calendar promises. No phase is considered c
 
 ### Phase 0 — Foundations and proof (M0)
 
-- [ ] P0-01 Bootstrap pnpm + TypeScript monorepo (web, media-worker, optional ml-worker, shared types/UI).
+**Progress, 2026-11-09:** P0-01 and P0-03 are implemented and verified in [the M0 implementation PR](https://github.com/dovvnloading/Any-Convert/pull/2). The CI typecheck/lint/unit/build/native-media audit passed with a committed frozen lockfile. P0-02 remains open for formal license auditing and hosted PR previews; P0-04 through P0-07 remain research gates.
+
+- [x] P0-01 Bootstrap pnpm + TypeScript monorepo (web, media-worker, optional ml-worker, shared types/UI).
 - [ ] P0-02 CI: install, typecheck, lint, tests, build, dependency/license audits, PR previews.
-- [ ] P0-03 Create deterministic media fixture suite and an automated ffprobe/ffmpeg result validator.
+- [x] P0-03 Create deterministic media fixture suite and an automated ffprobe/ffmpeg result validator.
 - [ ] P0-04 Spike WebCodecs + Mediabunny on Chrome, Safari, Firefox and representative mobile devices; record tested capabilities by browser.
 - [ ] P0-05 Spike native FFmpeg container, codec builds, performance and license profile; establish supported input/output matrix.
 - [ ] P0-06 Validate background-matting options, output alpha support and model licenses BEFORE choosing a production inference path.
@@ -175,4 +177,4 @@ No assumptions about pricing, maximum upload size, output codec support or guara
 - Make small vertical-slice PRs. Do not build every UI screen before the media engine is exercised.
 - Prefer measuring and shipping a narrow, exceptional experience over superficially supporting 300 formats.
 
-**The next implementation PR should do P0-01 through P0-03, not jump straight to visual polish.**
+**Next: finish the P0-02 license/preview gates, then run P0-04 through P0-07 browser, FFmpeg, AI and privacy spikes before broadening product claims.**

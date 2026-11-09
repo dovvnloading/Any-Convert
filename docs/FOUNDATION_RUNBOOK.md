@@ -57,8 +57,7 @@ connected development machine and commit the resulting changes.
 
 GitHub Actions has already passed TypeScript, Biome, Vitest, Next.js build,
 full media fixtures, real native FFmpeg worker conversions and dependency
-audit using the same declared package versions. Confirm the next **frozen**
-install workflow also passes before checking M0-01 through M0-03 as done.
+audit using the same declared package versions. Frozen lockfile installation is now verified. The **frozen** install workflow passed on 2026-11-09 ([GitHub Actions run](https://github.com/dovvnloading/Any-Convert/actions/runs/42719759388)). P0-01 and P0-03 are complete. P0-02 remains open for formal third-party license auditing and hosted pull-request previews.
 
 M0 still has separate research gates: browser/codec compatibility S1, worker
 cost and legal/build S2, and AI model quality/licensing S4. Those are not
