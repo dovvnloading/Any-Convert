@@ -184,6 +184,7 @@ export function VideoWorkspace() {
             ) : selected ? (
               <div className="selected-preview">
                 {selected.inspection.status === "ready" ? (
+                  <>
                   {/* biome-ignore lint/a11y/useMediaCaption: User-provided videos may lack caption tracks; do not claim an empty track is a transcript. */}
                   <video
                     className="preview-video"
@@ -193,6 +194,7 @@ export function VideoWorkspace() {
                     preload="metadata"
                     aria-label={["Preview of", selected.file.name].join(" ")}
                   />
+                  </>
                 ) : (
                   <div className="probe-state" role="status">
                     <span className="probe-spinner" aria-hidden="true" />
