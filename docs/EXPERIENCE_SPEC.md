@@ -4,6 +4,11 @@
 
 ## Creative direction: the quiet instrument
 
+**Implementation note (M0):** the initial workspace UI experiments with a lime
+highlight rather than the cobalt token proposed below. Neither palette is
+finalized until M1 visual review, accessibility contrast testing, and real
+device evaluation; the architecture/interaction requirements remain binding.
+
 Any-Convert should look and behave like a precision creative utility: intentional, calm, exceptionally legible. More like an editor's trusted tool than a conversion website. The visual identity is editorial restraint + a cinematic media viewport + engineered interaction detail.
 
 **What it must not be:** oversized gradients, glass tiles, generic hero blobs, dark-purple SaaS templates, dozens of feature cards, unearned animations, tiny text, or an upload page that becomes a totally different UI after a file arrives.

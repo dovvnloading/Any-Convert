@@ -1,0 +1,28 @@
+{
+  "name": "any-convert",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @any-convert/web dev",
+    "build": "pnpm --filter @any-convert/web build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "biome lint .",
+    "test": "vitest run",
+    "test:media": "python3 tools/media/run_qa.py",
+    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm test:media",
+    "format:check": "biome format .",
+    "format": "biome format --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.5",
+    "@types/node": "22.15.30",
+    "typescript": "5.9.3",
+    "vitest": "5.1.0",
+    "tsx": "4.20.6"
+  }
+}

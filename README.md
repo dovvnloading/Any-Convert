@@ -1,33 +1,47 @@
 # Any-Convert
 
-A premium, privacy-aware video conversion and transformation web app — **planned, not yet implemented**.
+**Video, handled beautifully.** A restrained video conversion and
+transformation web application, under active development.
 
-Any-Convert is being designed as a genuine dynamic web application: a restrained, media-first interface backed by a hybrid conversion engine. Supported tasks will run on your device when browser capabilities permit; difficult codecs and advanced AI video work can use consented, isolated server workers.
+> **M0 foundation is underway.** This repository now includes a responsive
+> browser-local file inspector and a native FFmpeg conversion **CLI proof**.
+> Conversion is not yet connected to the browser, and AI background removal,
+> cloud processing and job queues remain planned. This is **not yet a hosted,
+> production video converter**.
 
-**Vision:** drop a video, understand it instantly, choose the result, preview and download — without unnecessary accounts or clutter.
+## Run locally
 
-## Start here
+Requires Node.js 22.12+, pnpm 10.34.9, Python 3.11+, FFmpeg and FFprobe.
 
-1. **[PROJECT_MAP.md](PROJECT_MAP.md)** — north star, scope, ordered milestones, acceptance gates, and implementation tasks.
-2. **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — browser/FFmpeg/GPU execution paths, API, uploads, jobs, security and verification.
-3. **[docs/EXPERIENCE_SPEC.md](docs/EXPERIENCE_SPEC.md)** — polished UI direction, state-by-state UX, tokens, responsive/accessibility specifications.
-4. **[docs/RESEARCH_DECISIONS.md](docs/RESEARCH_DECISIONS.md)** — research sources, 2026 technology evaluation, licenses, spikes and ADRs.
+    corepack enable
+    pnpm install --frozen-lockfile
+    pnpm dev
 
-## Planned capabilities
+Visit http://localhost:3000 and import a local video for preview/inspection.
+The file stays on your device during inspection; unsupported browser codecs
+show an honest limitation message. GET /api/health checks the dynamic server.
 
-- Broad **validated** video-container and codec conversion, plus audio extraction, GIF and still frames.
-- Local, hardware-assisted conversion where compatible, with explicit cloud consent for unsupported paths.
-- Native FFmpeg conversion workers for fidelity, stability and difficult media.
-- AI subject isolation and background removal, with a transparent export path where the codec supports alpha.
-- Resumable upload, observable progress, cancellation, recovery and ephemeral private downloads.
-- A minimal workspace that makes complex settings available without imposing them.
+    pnpm typecheck
+    pnpm lint
+    pnpm test
+    pnpm build
+    pnpm test:media
 
-"Any" describes the ambition for broad coverage, **not** support for literally every file, proprietary codec or DRM format.
+See the [M0 runbook](docs/FOUNDATION_RUNBOOK.md) for native CLI usage, the
+13-fixture media harness and CI results. A generated pnpm lockfile is committed.
 
-## State of the project
+## Project navigation
 
-The initial repository contains documentation and its Apache 2.0 license. No working converter, hosted deployment, or completed implementation is being claimed. Follow the [Project Map](PROJECT_MAP.md) to build and verify it in vertical slices.
+1. [PROJECT_MAP.md](PROJECT_MAP.md) — milestones, scope and quality gates.
+2. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — local/native/GPU design, security and job API.
+3. [docs/EXPERIENCE_SPEC.md](docs/EXPERIENCE_SPEC.md) — UI, interaction states and accessibility.
+4. [docs/RESEARCH_DECISIONS.md](docs/RESEARCH_DECISIONS.md) — sources, alternatives and licensing.
+5. [docs/FOUNDATION_RUNBOOK.md](docs/FOUNDATION_RUNBOOK.md) — commands and exact M0 status.
 
-## License
+Planned capabilities include broadly validated conversion, audio extraction,
+GIFs and frames, explicit cloud fallback, and AI subject/background removal
+with supported alpha exports. “Any” is an aspiration, not a guarantee that
+every codec or DRM-protected file works.
 
-Project: [Apache License 2.0](LICENSE). Dependencies, FFmpeg build configurations and ML model checkpoints have independent terms; see [research and licensing gates](docs/RESEARCH_DECISIONS.md).
+Project licensed [Apache 2.0](LICENSE). Dependencies, codec builds and ML
+weights have their own terms that need review for production use.
