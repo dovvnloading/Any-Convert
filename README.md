@@ -14,7 +14,7 @@ transformation web application, under active development.
 Requires Node.js 22.12+, pnpm 10.34.9, Python 3.11+, FFmpeg and FFprobe.
 
     corepack enable
-    pnpm install --no-frozen-lockfile
+    pnpm install --frozen-lockfile
     pnpm dev
 
 Visit http://localhost:3000 and import a local video for preview/inspection.
@@ -28,7 +28,7 @@ show an honest limitation message. GET /api/health checks the dynamic server.
     pnpm test:media
 
 See the [M0 runbook](docs/FOUNDATION_RUNBOOK.md) for native CLI usage, the
-13-fixture test harness, CI and an important lockfile/build verification gap.
+13-fixture media harness and CI results. A generated pnpm lockfile is committed.
 
 ## Project navigation
 

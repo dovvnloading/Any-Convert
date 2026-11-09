@@ -11,7 +11,7 @@ libvpx-vp9, libopus, libmp3lame, FFV1 and AAC.
 ## Quickstart
 
     corepack enable
-    pnpm install --no-frozen-lockfile
+    pnpm install --frozen-lockfile
     pnpm dev
 
 Open http://localhost:3000. Drag a video into the workspace or choose it with
@@ -47,26 +47,22 @@ server-side tenancy, resource isolation, upload ownership, network protocol
 restrictions, quotas, cancellation and long-running job persistence belong
 to M2. Do not accept arbitrary network URLs as input.
 
-## Known installation/reproducibility gap
+## Dependency reproducibility and release gates
 
-The implementation sandbox could run Python and FFmpeg but could **not reach
-the public npm registry**. Pinned top-level dependency versions are committed,
-but the complete dependency tree is not installed or verified locally, and a
-pnpm-lock.yaml has **not** been created yet. CI temporarily installs with
---no-frozen-lockfile. This is not a production reproducibility standard.
+The complete pnpm-lock.yaml was resolved by a passing GitHub Actions job,
+fetched from the job output, verified by blob SHA, and committed to this branch.
+CI now installs with --frozen-lockfile and fails if the dependency graph and
+manifest disagree. Do not edit the lockfile by hand; use pnpm install on a
+connected development machine and commit the resulting changes.
 
-**Acceptance work still required before declaring M0 finished:**
+GitHub Actions has already passed TypeScript, Biome, Vitest, Next.js build,
+full media fixtures, real native FFmpeg worker conversions and dependency
+audit using the same declared package versions. Confirm the next **frozen**
+install workflow also passes before checking M0-01 through M0-03 as done.
 
-1. Run pnpm install on a connected machine and commit pnpm-lock.yaml.
-2. Switch CI to pnpm install --frozen-lockfile.
-3. Confirm passing typecheck, lint, unit tests, Next.js build, and full
-   required worker media QA in GitHub Actions.
-4. Review installed binary/container versions and transitive dependency
-   vulnerabilities before any deployment.
-5. Perform S1/S2 browser/codec capability and licensing evaluation.
-
-An output directory used by the CLI must exist. A CI failure is a gate, not
-permission to mark milestones complete.
+M0 still has separate research gates: browser/codec compatibility S1, worker
+cost and legal/build S2, and AI model quality/licensing S4. Those are not
+claimed complete by the existence of this proof-of-concept CLI.
 
 ## Legal and security note
 

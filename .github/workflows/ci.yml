@@ -31,15 +31,8 @@ jobs:
           sudo apt-get install -y --no-install-recommends ffmpeg
           ffmpeg -version | head -n 1
           ffprobe -version | head -n 1
-      # M0 temporary: frozen lockfile to be created after first connected install.
-      - name: Install dependencies (temporary non-frozen)
-        run: pnpm install --no-frozen-lockfile
-      # Temporary one-run diagnostics; removed after the lockfile is committed.
-      - name: Export resolved lockfile to build logs
-        run: |
-          echo BEGIN_ANY_CONVERT_PNPM_B64
-          base64 -w 76 pnpm-lock.yaml
-          echo END_ANY_CONVERT_PNPM_B64
+      - name: Install dependencies from committed lockfile
+        run: pnpm install --frozen-lockfile
       - name: Typecheck
         run: pnpm typecheck
       - name: Lint
