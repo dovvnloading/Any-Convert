@@ -34,6 +34,12 @@ jobs:
       # M0 temporary: frozen lockfile to be created after first connected install.
       - name: Install dependencies (temporary non-frozen)
         run: pnpm install --no-frozen-lockfile
+      # Temporary one-run diagnostics; removed after the lockfile is committed.
+      - name: Export resolved lockfile to build logs
+        run: |
+          echo BEGIN_ANY_CONVERT_PNPM_B64
+          base64 -w 76 pnpm-lock.yaml
+          echo END_ANY_CONVERT_PNPM_B64
       - name: Typecheck
         run: pnpm typecheck
       - name: Lint
