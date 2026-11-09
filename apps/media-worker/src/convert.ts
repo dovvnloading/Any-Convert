@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { access, rename, rm, stat } from "node:fs/promises";
+import { link, rm, stat } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import type { MediaProbe } from "@any-convert/contracts";
 import { probeMedia, verifyUniversalMp4 } from "./probe";
@@ -35,12 +35,6 @@ export async function convertUniversalMp4(
   if (resolve(input) === resolve(output)) throw new Error("Input and output paths must differ.");
   const inputStat = await stat(input);
   if (!inputStat.isFile()) throw new Error("Input must be a local file.");
-  try {
-    await access(output);
-    throw new Error("Output already exists; refusing overwrite.");
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-  }
   const tempOutput = join(dirname(output), `.${basename(output)}.${randomUUID()}.mp4`);
   try {
     await runCommand("ffmpeg", buildUniversalMp4Args(input, tempOutput), {
@@ -49,7 +43,16 @@ export async function convertUniversalMp4(
     });
     const result = await probeMedia(tempOutput, options);
     verifyUniversalMp4(result);
-    await rename(tempOutput, output);
+    // link() atomically fails on EEXIST; a check-then-rename could overwrite
+    // another process's output in the race between checking and publishing.
+    try {
+      await link(tempOutput, output);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EEXIST") {
+        throw new Error("Output already exists; refusing overwrite.", { cause: error });
+      }
+      throw error;
+    }
     return result;
   } finally {
     await rm(tempOutput, { force: true });

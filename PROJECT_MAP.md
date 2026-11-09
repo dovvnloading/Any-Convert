@@ -1,6 +1,6 @@
 # Any-Convert — Project Map
 
-> **Status:** product definition and engineering plan; implementation has **not** started.  
+> **Status:** active development. M0 app scaffold and native CLI proof implemented; cloud conversion and AI remain planned.  
 > **Last reviewed:** 2026-11-09.  
 > **Start here:** this document is the source of truth for scope, priorities, release gates, and execution order.
 

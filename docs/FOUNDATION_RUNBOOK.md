@@ -42,7 +42,7 @@ Generated fixtures/output are ignored by Git.
     pnpm exec tsx apps/media-worker/src/cli.ts convert tests/fixtures/generated/odd-ffv1.mkv tests/output/manual.mp4
 
 The CLI refuses existing output files and uses a random temporary destination
-that is verified before rename. It is **not safe to expose as a public API**:
+that is verified before an atomic hard-link publish (never overwriting an existing path). It is **not safe to expose as a public API**:
 server-side tenancy, resource isolation, upload ownership, network protocol
 restrictions, quotas, cancellation and long-running job persistence belong
 to M2. Do not accept arbitrary network URLs as input.

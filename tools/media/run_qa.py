@@ -6,6 +6,7 @@ Without installed JS tooling, standalone FFmpeg fixture and Python tests still r
 """
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 import subprocess
@@ -40,6 +41,21 @@ def main() -> None:
         output.unlink(missing_ok=True)
         run(["pnpm", "exec", "tsx", "apps/media-worker/src/cli.ts", "convert", str(OUT / filename), str(output)])
         validate_output(output)
+
+    # Running the CLI again against an existing result must fail without
+    # changing even one byte. This exercises atomic no-overwrite publication.
+    existing = outputs / "odd-ffv1.mkv.mp4"
+    original_hash = hashlib.sha256(existing.read_bytes()).hexdigest()
+    again = subprocess.run(
+        ["pnpm", "exec", "tsx", "apps/media-worker/src/cli.ts", "convert",
+         str(OUT / "odd-ffv1.mkv"), str(existing)],
+        text=True, capture_output=True, check=False, cwd=ROOT, timeout=180,
+    )
+    if again.returncode == 0 or "Output already exists" not in again.stderr:
+        raise RuntimeError("Native worker failed to reject an existing output")
+    if hashlib.sha256(existing.read_bytes()).hexdigest() != original_hash:
+        raise RuntimeError("Native worker modified an existing output")
+    print("PASS atomic no-overwrite behavior", flush=True)
     print("MEDIA QA PASSED: fixture matrix + native worker conversions", flush=True)
 
 

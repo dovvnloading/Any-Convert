@@ -101,15 +101,13 @@ export function VideoWorkspace() {
     setSelected({ file, url: nextUrl, inspection: { status: "probing" } });
   }
 
-  function reset() {
-    setInputError(null);
-    setSelected(null);
-    if (currentUrl.current) {
-      URL.revokeObjectURL(currentUrl.current);
-      currentUrl.current = null;
-    }
-    if (picker.current) picker.current.value = "";
-    picker.current?.click();
+  function chooseFile() {
+    const input = picker.current;
+    if (!input) return;
+    // A cancelled dialog must preserve the current file and playable preview.
+    // Clearing the input value allows choosing the same file again.
+    input.value = "";
+    input.click();
   }
 
   return (
@@ -223,7 +221,7 @@ export function VideoWorkspace() {
                 <span className="import-overline">YOUR NEXT PROJECT STARTS HERE</span>
                 <h2>Drop your video here.</h2>
                 <p>Or browse your files to get started.</p>
-                <button className="light-button" type="button" onClick={() => picker.current?.click()}>
+                <button className="light-button" type="button" onClick={chooseFile}>
                   Choose a video <ArrowIcon />
                 </button>
                 <span className="stage-bottom-tag"><span className="tiny-indicator" /> NO UPLOAD REQUIRED FOR INSPECTION</span>
@@ -291,11 +289,11 @@ export function VideoWorkspace() {
 
             <div className="inspector-bottom">
               {selected ? (
-                <button type="button" className="dark-button" onClick={reset}>
+                <button type="button" className="dark-button" onClick={chooseFile}>
                   Choose another video <ArrowIcon />
                 </button>
               ) : (
-                <button type="button" className="dark-button" onClick={() => picker.current?.click()}>
+                <button type="button" className="dark-button" onClick={chooseFile}>
                   Explore a file <ArrowIcon />
                 </button>
               )}
