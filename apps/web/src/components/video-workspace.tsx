@@ -147,7 +147,7 @@ export function VideoWorkspace() {
 
         <div className="workspace-grid">
           <section
-            className={"preview-stage" + (dragging ? " is-dragging" : "") + (selected ? " has-file" : "")}
+            className={["preview-stage", dragging && "is-dragging", selected && "has-file"].filter(Boolean).join(" ")}
             aria-label="Video import and preview"
             onDragEnter={(event) => {
               event.preventDefault();
@@ -184,13 +184,14 @@ export function VideoWorkspace() {
             ) : selected ? (
               <div className="selected-preview">
                 {selected.inspection.status === "ready" ? (
+                  {/* biome-ignore lint/a11y/useMediaCaption: User-provided videos may lack caption tracks; do not claim an empty track is a transcript. */}
                   <video
                     className="preview-video"
                     src={selected.url}
                     controls
                     playsInline
                     preload="metadata"
-                    aria-label={"Preview of " + selected.file.name}
+                    aria-label={["Preview of", selected.file.name].join(" ")}
                   />
                 ) : (
                   <div className="probe-state" role="status">
@@ -258,7 +259,7 @@ export function VideoWorkspace() {
                   <div className="detail-row">
                     <span>Dimensions</span>
                     <strong>{selected.inspection.status === "ready"
-                      ? selected.inspection.width + " × " + selected.inspection.height
+                      ? [selected.inspection.width, selected.inspection.height].join(" × ")
                       : "Not available"}</strong>
                   </div>
                   <div className="detail-row">

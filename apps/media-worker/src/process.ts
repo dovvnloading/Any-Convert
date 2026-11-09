@@ -67,7 +67,7 @@ export function runCommand(
       clearTimeout(timer);
       if (exceeded) return fail(new Error("Media command output exceeded safety limit."));
       if (timedOut) return fail(new Error("Media command timed out."));
-      if (code !== 0) return fail(new Error(binary + " exited " + code + ": " + stderr.slice(-3_000)));
+      if (code !== 0) return fail(new Error(`${binary} exited ${code}: ${stderr.slice(-3_000)}`));
       settled = true;
       resolve({ stdout, stderr, exitCode: code ?? 0 });
     });

@@ -41,7 +41,7 @@ export async function convertUniversalMp4(
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
-  const tempOutput = join(dirname(output), "." + basename(output) + "." + randomUUID() + ".mp4");
+  const tempOutput = join(dirname(output), `.${basename(output)}.${randomUUID()}.mp4`);
   try {
     await runCommand("ffmpeg", buildUniversalMp4Args(input, tempOutput), {
       ...options,

@@ -10,10 +10,10 @@ export function isPotentialVideo(file: Pick<File, "name" | "type" | "size">): bo
 
 export function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) return "Unknown size";
-  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024) return String(bytes).concat(" B");
   const unit = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), 4);
   const units = ["B", "KB", "MB", "GB", "TB"];
-  return (bytes / 1024 ** unit).toFixed(bytes / 1024 ** unit >= 10 ? 0 : 1) + " " + units[unit];
+  return [(bytes / 1024 ** unit).toFixed(bytes / 1024 ** unit >= 10 ? 0 : 1), units[unit]].join(" ");
 }
 
 export function formatDuration(seconds: number): string {
