@@ -13,7 +13,7 @@ jobs:
   quality:
     name: Types, lint, tests, build and real media fixtures
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends ffmpeg
           ffmpeg -version | head -n 1
           ffprobe -version | head -n 1
-      - name: Install dependencies from committed lockfile
+      - name: Install frozen dependencies
         run: pnpm install --frozen-lockfile
       - name: Typecheck
         run: pnpm typecheck
@@ -41,6 +41,12 @@ jobs:
         run: pnpm test
       - name: Build web
         run: pnpm build
+      - name: Generate test media
+        run: python3 tools/media/generate_fixtures.py
+      - name: Install Chromium for browser integration tests
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Real conversion browser journey
+        run: pnpm test:browser
       - name: Real FFmpeg fixture and native-worker integration
         env:
           ANY_CONVERT_REQUIRE_WORKER: "1"

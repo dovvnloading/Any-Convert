@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export function GET() {
   return NextResponse.json(
-    { status: "ok", service: "any-convert-web", engine: "not-connected" },
+    { status: "ok", service: "any-convert-web", engine: "browser-local", serverConversion: false },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

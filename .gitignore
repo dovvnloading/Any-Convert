@@ -13,3 +13,7 @@ coverage/
 tests/fixtures/generated/
 tests/output/
 .tmp/
+
+playwright-report/
+test-results/
+.vercel/
