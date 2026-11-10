@@ -1,6 +1,6 @@
 # Local converter — release guide
 
-**Status:** active browser-conversion implementation. Public release is
+**Status:** shipped browser-local converter. An optional, separately deployable native engine now lives in [SELF_HOST.md](SELF_HOST.md); browser mode remains upload-free. Public release is
 gated on successful browser E2E tests and deployment verification.
 
 ## Current user journey
