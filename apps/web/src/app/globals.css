@@ -454,7 +454,7 @@ legend { padding: 0; }
 .batch-panel-heading h2 { font-size: clamp(22px, 2.4vw, 30px); font-weight: 550; letter-spacing: -.035em; margin-top: 7px; }
 .batch-muted { color: #6b736e; font-size: 13px; line-height: 1.55; }
 .batch-drop { border: 1.5px dashed #a8b6a9; border-radius: 12px; padding: 30px 20px; background: #fafbf7; display:flex; flex-direction:column; gap: 11px; align-items:center; text-align:center; }
-.batch-drop input[type=file] { max-width: 100%; font-size: 12px; }
+.batch-drop input[type="file"] { max-width: 100%; font-size: 12px; }
 .batch-drop p { font-size: 15px; color: #303831; }
 .batch-drop small { font-size: 12px; color: #6a746a; }
 .batch-button { display:inline-flex; align-items:center; justify-content:center; gap:8px; border-radius: 8px; border:1px solid #aebcaf; padding: 12px 17px; background:#f5f8f2; color:#27342a; text-decoration:none; font: 600 13px/1.2 inherit; cursor:pointer; min-height:44px; }

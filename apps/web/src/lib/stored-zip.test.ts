@@ -15,6 +15,11 @@ describe("bounded stored ZIP export packs", () => {
     const plan = planStoredZip([{ name: "clip.mp4", blob: a }, { name: "clip.mp4", blob: b }]);
     expect(plan.entries.map((item) => item.name)).toEqual(["clip.mp4", "2-clip.mp4"]);
     expect(plan.totalBytes).toBe(11);
+    const collision = planStoredZip([
+      { name: "a.mp4", blob: a }, { name: "a.mp4", blob: b },
+      { name: "2-a.mp4", blob: a },
+    ]);
+    expect(new Set(collision.entries.map((entry) => entry.name)).size).toBe(3);
   });
   it("rejects empty and unsafe-sized export packs", () => {
     expect(() => planStoredZip([])).toThrow();

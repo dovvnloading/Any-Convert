@@ -62,6 +62,7 @@ export function BatchWorkspace() {
   const generation = useRef(0);
   const operation = useRef(0);
   const cancelled = useRef(false);
+  const runToken = useRef(0);
   const outputRefs = useRef(new Map<string, OutputFile>());
   const archiveRef = useRef<OutputFile | null>(null);
   const archiveAbort = useRef<AbortController | null>(null);
@@ -111,11 +112,26 @@ export function BatchWorkspace() {
 
   useEffect(() => {
     void sweepStaleTemporaryExports();
+    // Capture the maps once: this cleanup must not change on each render.
+    const outputs = outputRefs.current;
     return () => {
       cancelled.current = true;
       generation.current += 1;
-      stopActiveWorker();
-      clearOutputs();
+      runToken.current += 1;
+      activeWorker.current?.terminate();
+      rejectActive.current?.();
+      if (activeStorageKey.current) void removeTemporaryExport(activeStorageKey.current);
+      archiveAbort.current?.abort();
+      for (const output of outputs.values()) {
+        URL.revokeObjectURL(output.url);
+        if (output.storageKey) void removeTemporaryExport(output.storageKey);
+      }
+      outputs.clear();
+      const packed = archiveRef.current;
+      if (packed) {
+        URL.revokeObjectURL(packed.url);
+        if (packed.storageKey) void removeTemporaryExport(packed.storageKey);
+      }
     };
   }, []);
 
@@ -211,7 +227,7 @@ export function BatchWorkspace() {
     setJobs((previous) => previous.map((job) => job.id === id ? { ...job, ...patch } : job));
   }
 
-  async function runOne(job: BatchJob, asset: Asset) {
+  async function runOne(job: BatchJob, asset: Asset, token: number) {
     const storageKey = makeTemporaryExportKey(job.format);
     activeStorageKey.current = storageKey;
     updateJob(job.id, { stage: "preparing", progress: null, error: null, result: null });
@@ -220,12 +236,17 @@ export function BatchWorkspace() {
         type: "convert", id: ++operation.current, file: asset.file, preset: job.format,
         quality, height, storageKey,
       }, (update) => {
+        if (token !== runToken.current) return;
         if (update.type === "stage") updateJob(job.id, { stage: update.stage });
         if (update.type === "progress") {
           updateJob(job.id, { stage: "converting", progress: validProgress(update.progress) });
         }
       });
       if (message.type !== "complete") throw new Error("The output was not verified");
+      if (token !== runToken.current) {
+        if (message.storageKey) await removeTemporaryExport(message.storageKey);
+        return;
+      }
       const blob = message.file ?? new Blob([message.buffer], { type: message.mime });
       const output: OutputFile = {
         blob, url: URL.createObjectURL(blob),
@@ -236,10 +257,12 @@ export function BatchWorkspace() {
       outputRefs.current.set(job.id, output);
       updateJob(job.id, { stage: "ready", progress: 100, result: output, error: null });
     } catch (error) {
-      updateJob(job.id, {
-        stage: cancelled.current ? "cancelled" : "failed",
-        progress: null, error: cancelled.current ? "Cancelled" : shortError(error),
-      });
+      if (token === runToken.current) {
+        updateJob(job.id, {
+          stage: cancelled.current ? "cancelled" : "failed",
+          progress: null, error: cancelled.current ? "Cancelled" : shortError(error),
+        });
+      }
     } finally {
       if (activeStorageKey.current === storageKey) activeStorageKey.current = null;
       if (!outputRefs.current.has(job.id)) void removeTemporaryExport(storageKey);
@@ -268,12 +291,14 @@ export function BatchWorkspace() {
     setJobs(planned);
     setNotice(null);
     cancelled.current = false;
+    const token = ++runToken.current;
     setPhase("running");
     for (const job of planned) {
-      if (cancelled.current) break;
+      if (cancelled.current || token !== runToken.current) break;
       const asset = assets.find((item) => item.id === job.assetId);
-      if (asset) await runOne(job, asset);
+      if (asset) await runOne(job, asset, token);
     }
+    if (token !== runToken.current) return;
     if (cancelled.current) {
       setJobs((previous) => previous.map((job) =>
         job.stage === "queued" ? { ...job, stage: "cancelled" } : job));
@@ -284,18 +309,25 @@ export function BatchWorkspace() {
   function stopBatch() {
     if (phase !== "running") return;
     cancelled.current = true;
+    runToken.current += 1;
     stopActiveWorker();
+    setJobs((previous) => previous.map((job) =>
+      ["queued", "preparing", "converting", "verifying"].includes(job.stage)
+        ? { ...job, stage: "cancelled", progress: null, error: "Cancelled" }
+        : job));
     setPhase("complete");
   }
 
   async function retry(job: BatchJob) {
     if (phase !== "complete" || job.stage !== "failed") return;
     const asset = assets.find((item) => item.id === job.assetId);
-    if (!asset || !asset.info) return;
+    if (!asset?.info) return;
     cancelled.current = false;
+    clearArchive();
+    const token = ++runToken.current;
     setPhase("running");
-    await runOne(job, asset);
-    setPhase("complete");
+    await runOne(job, asset, token);
+    if (token === runToken.current) setPhase("complete");
   }
 
   async function prepareArchive() {
@@ -303,10 +335,10 @@ export function BatchWorkspace() {
     const completed = jobs.filter((job) => job.stage === "ready" && job.result);
     if (completed.length === 0) return;
     clearArchive();
-    const sources = completed.map((job, index) => ({
-      name: String(index + 1).padStart(2, "0") + "-" + job.result!.name,
-      blob: job.result!.blob,
-    }));
+    const sources = completed.flatMap((job, index) => job.result ? [{
+      name: `${String(index + 1).padStart(2, "0")}-${job.result.name}`,
+      blob: job.result.blob,
+    }] : []);
     const controller = new AbortController();
     archiveAbort.current = controller;
     setArchive({ status: "packing", progress: 0, error: null, output: null });
@@ -332,10 +364,16 @@ export function BatchWorkspace() {
   const busy = phase === "running" || phase === "inspecting";
   const completed = jobs.filter((job) => job.stage === "ready" && job.result);
   const failed = jobs.filter((job) => job.stage === "failed");
-  const skipped = assets.reduce((sum, asset) => asset.info && !asset.error
-    ? sum + formats.filter((format) => !validFormats(asset.info!).includes(format)).length : sum, 0);
-  const eligible = assets.reduce((sum, asset) => asset.info && !asset.error
-    ? sum + formats.filter((format) => validFormats(asset.info!).includes(format)).length : sum, 0);
+  const skipped = assets.reduce((sum, asset) => {
+    if (!asset.info || asset.error) return sum;
+    const supported = validFormats(asset.info);
+    return sum + formats.filter((format) => !supported.includes(format)).length;
+  }, 0);
+  const eligible = assets.reduce((sum, asset) => {
+    if (!asset.info || asset.error) return sum;
+    const supported = validFormats(asset.info);
+    return sum + formats.filter((format) => supported.includes(format)).length;
+  }, 0);
   const packTooLarge = completed.reduce((total, job) => total + (job.result?.bytes ?? 0), 0) > MAX_ZIP_CONTENT_BYTES;
 
   return (
@@ -365,7 +403,7 @@ export function BatchWorkspace() {
             <div><span>01 / SOURCE</span><h2 id="batch-source-heading">Your media</h2></div>
             <span className="batch-muted">{assets.length} / {MAX_FILES} files</span>
           </div>
-          <div className="batch-drop" onDragOver={(event) => event.preventDefault()}
+          <div role="group" aria-label="Media drop area" className="batch-drop" onDragOver={(event) => event.preventDefault()}
             onDrop={(event) => {
               event.preventDefault();
               if (!busy && archive.status !== "packing") void importFiles(Array.from(event.dataTransfer.files));
@@ -389,10 +427,10 @@ export function BatchWorkspace() {
                 <div className="batch-asset-info">
                   <strong title={asset.file.name}>{asset.file.name}</strong>
                   <span>{formatBytes(asset.file.size)} · {asset.error ? asset.error
-                    : asset.info ? "Ready · Suggested " + String(recommendedLocalFormat(asset.info) ?? "none").toUpperCase()
+                    : asset.info ? `Ready · Suggested ${String(recommendedLocalFormat(asset.info) ?? "none").toUpperCase()}`
                     : "Inspecting codecs…"}</span>
                 </div>
-                <span className={"batch-chip " + (asset.error ? "is-error" : asset.info ? "is-ready" : "")}>
+                <span className={`batch-chip ${asset.error ? "is-error" : asset.info ? "is-ready" : ""}`}>
                   {asset.error ? "Unsupported" : asset.info ? "Inspected" : "Inspecting"}
                 </span>
               </div>
@@ -407,7 +445,7 @@ export function BatchWorkspace() {
           </div>
           <div className="batch-format-grid">
             {FORMATS.map((format) => (
-              <label className={"batch-format " + (formats.includes(format.id) ? "is-selected" : "")} key={format.id}>
+              <label className={`batch-format ${formats.includes(format.id) ? "is-selected" : ""}`} key={format.id}>
                 <input type="checkbox" name="batch-format" checked={formats.includes(format.id)}
                   onChange={() => toggleFormat(format.id)} disabled={busy}/>
                 <span><strong>{format.label}</strong><small>{format.detail}</small></span>
@@ -454,11 +492,11 @@ export function BatchWorkspace() {
                 <div className="batch-job" key={job.id}>
                   <div className="batch-job-summary">
                     <div><strong>{job.filename}</strong><span>{getFormat(job.format).label} · {stageLabel(job.stage)}</span></div>
-                    <span className={"batch-chip " + (job.stage === "ready" ? "is-ready" : job.stage === "failed" ? "is-error" : "")}>{job.stage}</span>
+                    <span className={`batch-chip ${job.stage === "ready" ? "is-ready" : job.stage === "failed" ? "is-error" : ""}`}>{job.stage}</span>
                   </div>
                   {job.stage === "converting" && (
                     <progress max={100} value={job.progress ?? undefined}
-                      aria-label={"Conversion progress for " + job.filename + " to " + job.format}/>
+                      aria-label={`Conversion progress for ${job.filename} to ${job.format}`}/>
                   )}
                   {job.error && <p className="batch-error" role="alert">{job.error}</p>}
                   {job.result && <a className="batch-download" href={job.result.url}

@@ -14,7 +14,11 @@ export type ZipSource = { name: string; blob: Blob };
 export type ZipPlan = { entries: { name: string; encoded: Uint8Array; blob: Blob }[]; totalBytes: number };
 
 export function sanitizeZipEntryName(value: string): string {
-  const safe = value.normalize("NFC").replace(/[\\/\u0000-\u001f<>:"|?*]/g, "-")
+  const safe = value.normalize("NFC").replace(/[\\/<>:"|?*]/g, "-")
+    .split("").map((char) => {
+      const code = char.charCodeAt(0);
+      return code < 32 || code === 127 ? "-" : char;
+    }).join("")
     .replace(/^\.+/, "_").replace(/\.+$/, "").trim();
   return safe.slice(0, 180) || "export.bin";
 }
@@ -33,8 +37,13 @@ export function planStoredZip(sources: readonly ZipSource[]): ZipPlan {
     if (totalBytes > MAX_ZIP_CONTENT_BYTES) {
       throw new Error("The export pack exceeds the 2 GB ZIP32 safety limit. Download files individually.");
     }
-    let name = sanitizeZipEntryName(source.name);
-    if (names.has(name.toLowerCase())) name = `${index + 1}-${name}`;
+    const baseName = sanitizeZipEntryName(source.name);
+    let name = baseName;
+    let suffix = index + 1;
+    while (names.has(name.toLowerCase())) {
+      name = `${suffix}-${baseName}`;
+      suffix += 1;
+    }
     names.add(name.toLowerCase());
     return { name, encoded: utf8.encode(name), blob: source.blob };
   });
@@ -49,7 +58,7 @@ for (let n = 0; n < 256; n += 1) {
 }
 export function zipCrc32(bytes: Uint8Array): number {
   let crc = 0xffffffff;
-  for (const byte of bytes) crc = ((crc >>> 8) ^ CRC_TABLE[(crc ^ byte) & 0xff]!) >>> 0;
+  for (const byte of bytes) crc = ((crc >>> 8) ^ (CRC_TABLE[(crc ^ byte) & 0xff] ?? 0)) >>> 0;
   return (crc ^ 0xffffffff) >>> 0;
 }
 function crcUpdate(crc: number, bytes: Uint8Array): number {
@@ -140,12 +149,13 @@ export async function createStoredZip(
   const handle = await directory.getFileHandle(storageKey, { create: true });
   let writable: FileSystemWritableFileStream | null = null;
   try {
-    writable = await handle.createWritable();
+    const outputStream = await handle.createWritable();
+    writable = outputStream;
     let position = 0;
     const write = async (bytes: Uint8Array<ArrayBuffer>) => {
       if (signal?.aborted) throw new DOMException("Archive cancelled", "AbortError");
       if (position + bytes.byteLength > MAX_UINT32) throw new Error("Archive is too large for ZIP32");
-      await writable!.write(bytes);
+      await outputStream.write(bytes);
       position += bytes.byteLength;
     };
     const records: Uint8Array<ArrayBuffer>[] = [];
@@ -181,7 +191,7 @@ export async function createStoredZip(
     for (const record of records) await write(record);
     const centralLength = position - centralOffset;
     await write(endOfCentralDirectory(records.length, centralLength, centralOffset));
-    await writable.close();
+    await outputStream.close();
     writable = null;
     const file = await handle.getFile();
     if (file.size !== position) throw new Error("Archive size verification failed");
