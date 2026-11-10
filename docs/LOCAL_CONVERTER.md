@@ -5,7 +5,7 @@ gated on successful browser E2E tests and deployment verification.
 
 ## Current user journey
 
-1. Select or drag media up to 256 MB for the fallback or up to 1 GB
+1. Select, drag, or paste a copied audio/video file (Ctrl/⌘+V, when the browser supplies a File) up to 256 MB for the fallback or up to 1 GB
    experimentally when private browser storage and capacity are available.
 2. A dedicated Web Worker probes the real container, primary audio/video
    tracks, display dimensions, duration, codecs, and decodability.
@@ -18,6 +18,8 @@ gated on successful browser E2E tests and deployment verification.
    required tracks and expected codecs are present.
 6. Preview when the browser supports playback; download locally with
    the correct extension. Change options and convert again.
+
+Clipboard import ignores non-media content and text-entry controls; it uses the same local inspection and size limits as browsing and drag/drop. Clipboard support varies by browser and operating system.
 
 Cancellation terminates the worker. Original files and result bytes remain
 on the device. Object URLs are revoked on replacement/unmount. Closing
