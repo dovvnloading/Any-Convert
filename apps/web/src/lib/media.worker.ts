@@ -109,7 +109,7 @@ async function inspect(file: File): Promise<MediaInfo> {
   };
 }
 
-async function loadEncoder(id: FormatId): Promise<void> {
+async function loadEncoder(id: FormatId, withoutAudio = false): Promise<void> {
   if (id === "mp3" && !(await canEncodeAudio("mp3"))) {
     const { registerMp3Encoder } = await import("@mediabunny/mp3-encoder");
     registerMp3Encoder();
@@ -118,7 +118,7 @@ async function loadEncoder(id: FormatId): Promise<void> {
     const { registerFlacEncoder } = await import("@mediabunny/flac-encoder");
     registerFlacEncoder();
   }
-  if ((id === "mp4" || id === "mov") && !(await canEncodeAudio("aac"))) {
+  if ((id === "mp4" || id === "mov") && !withoutAudio && !(await canEncodeAudio("aac"))) {
     const { registerAacEncoder } = await import("@mediabunny/aac-encoder");
     registerAacEncoder();
   }
@@ -149,10 +149,11 @@ async function convert(request: ConvertRequest): Promise<void> {
     input.getPrimaryVideoTrack(), input.getPrimaryAudioTrack(),
   ]);
   const audioOnly = isAudioFormat(request.preset);
+  const withoutAudio = !audioOnly && request.omitAudio === true;
   if (audioOnly && !sourceAudio) throw new Error("No audio track");
   if (!audioOnly && !sourceVideo) throw new Error("No video track");
 
-  await loadEncoder(request.preset);
+  await loadEncoder(request.preset, withoutAudio);
   const streaming = await supportsDiskTarget(request.file.size);
   if (!streaming && request.file.size > MAX_LOCAL_BYTES) {
     throw new Error("Disk-backed conversion is unavailable or storage quota is too small");
@@ -189,7 +190,7 @@ async function convert(request: ConvertRequest): Promise<void> {
           ...(quality ? { quality } : {}),
           ...(resize ? { height: resize } : {}),
         },
-    audio: sourceAudio
+    audio: sourceAudio && !withoutAudio
       ? {
           codec: request.preset === "webm" ? "opus"
             : request.preset === "mp3" ? "mp3"
@@ -204,7 +205,8 @@ async function convert(request: ConvertRequest): Promise<void> {
   const retainedVideo = conversion.utilizedTracks.some((track) => track.type === "video");
   const retainedAudio = conversion.utilizedTracks.some((track) => track.type === "audio");
   if (!conversion.isValid || (!audioOnly && !retainedVideo) ||
-      (audioOnly && !retainedAudio) || (sourceAudio && !retainedAudio)) {
+      (audioOnly && !retainedAudio) || (sourceAudio && !withoutAudio && !retainedAudio) ||
+      (withoutAudio && retainedAudio)) {
     // Mediabunny already tells us which track was rejected and why. Keep
     // those diagnostics rather than collapsing every failure into "codec".
     const [videoCodec, audioCodec] = await Promise.all([
@@ -244,7 +246,8 @@ async function convert(request: ConvertRequest): Promise<void> {
   const [video, audio] = await Promise.all([
     verification.getPrimaryVideoTrack(), verification.getPrimaryAudioTrack(),
   ]);
-  if ((!audioOnly && !video) || (audioOnly && !audio) || (sourceAudio && !audio)) {
+  if ((!audioOnly && !video) || (audioOnly && !audio) ||
+      (sourceAudio && !withoutAudio && !audio) || (withoutAudio && audio)) {
     throw new Error("Invalid output: expected media tracks were lost");
   }
   if (video && !audioOnly) {
