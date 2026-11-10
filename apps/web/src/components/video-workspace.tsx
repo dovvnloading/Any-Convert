@@ -82,6 +82,7 @@ export function VideoWorkspace() {
   const [format, setFormat] = useState<FormatId>("mp4");
   const [quality, setQuality] = useState<QualityId>("source");
   const [height, setHeight] = useState<HeightLimit>("original");
+  const [withoutAudio, setWithoutAudio] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const [previewResult, setPreviewResult] = useState(true);
@@ -102,7 +103,7 @@ export function VideoWorkspace() {
 
   const busy = stage === "inspecting" || stage === "preparing" || stage === "converting" || stage === "verifying";
   const processing = stage === "preparing" || stage === "converting" || stage === "verifying";
-  const supported = info ? validFormats(info) : [];
+  const supported = info ? validFormats(info, { withoutAudio }) : [];
   const selection = getFormat(format);
   const isAudio = isAudioFormat(format);
   const showingResult = Boolean(stage === "done" && result && previewResult);
@@ -131,6 +132,7 @@ export function VideoWorkspace() {
   function resetOptions(): void {
     setQuality("source");
     setHeight("original");
+    setWithoutAudio(false);
     setProgress(null);
     clearResult();
   }
@@ -213,6 +215,17 @@ export function VideoWorkspace() {
     pickerRef.current.click();
   }
 
+  function changeAudioMode(enabled: boolean): void {
+    if (busy || !info?.hasVideo || !info.hasAudio) return;
+    setWithoutAudio(enabled);
+    const choices = validFormats(info, { withoutAudio: enabled });
+    setFormat((previous) => choices.includes(previous) ? previous : (choices[0] ?? "mp4"));
+    clearResult();
+    setStage("ready");
+    setError(null);
+    setProgress(null);
+  }
+
   function changeFormat(id: FormatId): void {
     if (busy) return;
     setFormat(id);
@@ -263,7 +276,7 @@ export function VideoWorkspace() {
         pendingStorageRef.current = null;
         setResult({
           url: nextUrl,
-          name: safeOutputName(source.file.name, message.extension),
+          name: safeOutputName(source.file.name, message.extension, withoutAudio),
           bytes: message.bytes,
           mime: message.mime,
           preset: message.extension,
@@ -284,7 +297,7 @@ export function VideoWorkspace() {
     });
     const storageKey = makeTemporaryExportKey(format);
     pendingStorageRef.current = storageKey;
-    worker?.postMessage({ type: "convert", id, file: source.file, preset: format, quality, height, storageKey });
+    worker?.postMessage({ type: "convert", id, file: source.file, preset: format, quality, height, omitAudio: withoutAudio, storageKey });
   }
 
   function cancelConversion(): void {
@@ -474,6 +487,16 @@ export function VideoWorkspace() {
                     {info.audioCodec && <span>Audio: {formatCodec(info.audioCodec)}</span>}
                   </div>
                 </div>
+                {info.hasVideo && info.hasAudio && (
+                  <label className="video-only-option">
+                    <input type="checkbox" checked={withoutAudio} disabled={busy}
+                      onChange={(event) => changeAudioMode(event.target.checked)} />
+                    <span>
+                      <strong>Export video without audio</strong>
+                      <small>The output will have no sound. Choose this only when audio cannot be decoded or you do not need it.</small>
+                    </span>
+                  </label>
+                )}
                 <fieldset className="format-fieldset" disabled={busy}>
                   <legend className="field-heading">OUTPUT FORMAT <span>{selection.group === "video" ? "VIDEO" : "AUDIO"}</span></legend>
                   <div className="format-options">
@@ -490,8 +513,9 @@ export function VideoWorkspace() {
                   )}
                   {supported.length === 0 && (
                     <p className="settings-note" role="status">
-                      This device cannot currently process the required tracks or codecs.
-                      Try another supported browser or a separately self-hosted Native Engine.
+                      {info.hasVideo && info.hasAudio && !info.canDecodeAudio && info.canDecodeVideo && !withoutAudio
+                        ? "Your browser cannot decode this video's audio. You can export the video without sound using the option above, or try the separately self-hosted Native Engine to keep audio."
+                        : "This device cannot currently process the required tracks or codecs. Try another supported browser or a separately self-hosted Native Engine."}
                     </p>
                   )}
                 </fieldset>
@@ -541,7 +565,7 @@ export function VideoWorkspace() {
                   <a href={result.url} download={result.name} className="primary-action" aria-label={["Download", result.name].join(" ")}>
                     Download {result.preset.toUpperCase()} <Icon name="download"/>
                   </a>
-                  <div className="result-details" role="status"><Icon name="check" size={15}/><span>Verified output · {formatBytes(result.bytes)}</span></div>
+                  <div className="result-details" role="status"><Icon name="check" size={15}/><span>Verified output{withoutAudio ? " · video only (no audio)" : ""} · {formatBytes(result.bytes)}</span></div>
                   <button type="button" className="text-action" onClick={() => changeFormat(format)}>Convert another format <Icon name="repeat" size={14}/></button>
                 </>
               ) : (
