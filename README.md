@@ -46,6 +46,13 @@ Visit http://localhost:8080 and select **Native engine**. For internet
 exposure, read the [security/HTTPS limitations](docs/SELF_HOST.md) first.
 The backend must not be published directly; only Caddy should be public.
 
+## Batch studio
+
+The [Batch studio](/batch) on the hosted site exports multiple local files and
+formats through a serialized browser conversion queue, then bundles verified
+outputs into a streaming ZIP (up to 2 GB). Each output can also be downloaded
+individually. No files are sent to the server. See [docs/BATCH_STUDIO.md](docs/BATCH_STUDIO.md).
+
 ## Build and test
 
 Requires Node.js 22.12+, pnpm 10.34.9, Python 3.11+, FFmpeg and FFprobe.
