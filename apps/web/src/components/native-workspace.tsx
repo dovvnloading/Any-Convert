@@ -80,7 +80,7 @@ export function NativeWorkspace() {
   const pollJob = useCallback(async function pollJob(id: string, sequence: number) {
     const schedule = () => {
       if (timer.current !== null) clearTimeout(timer.current);
-      timer.current = setTimeout(() => { void pollJob(id, sequence); }, 900);
+      timer.current = setTimeout(() => { void pollJob(created.id, sequence); }, 900);
     };
     if (sequence !== generation.current) return;
     try {
