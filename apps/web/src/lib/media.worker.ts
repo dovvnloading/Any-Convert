@@ -20,6 +20,8 @@ import {
 } from "mediabunny";
 import {
   explainMediaError,
+  explainConversionPlanFailure,
+  MediaCapabilityError,
   getFormat,
   isAudioFormat,
   MAX_LOCAL_BYTES,
@@ -203,8 +205,21 @@ async function convert(request: ConvertRequest): Promise<void> {
   const retainedAudio = conversion.utilizedTracks.some((track) => track.type === "audio");
   if (!conversion.isValid || (!audioOnly && !retainedVideo) ||
       (audioOnly && !retainedAudio) || (sourceAudio && !retainedAudio)) {
-    const reasons = conversion.discardedTracks.map((discarded) => discarded.reason).join(", ");
-    throw new Error(["Unsupported codec:", reasons || "No compatible encoder on this device"].join(" "));
+    // Mediabunny already tells us which track was rejected and why. Keep
+    // those diagnostics rather than collapsing every failure into "codec".
+    const [videoCodec, audioCodec] = await Promise.all([
+      sourceVideo?.getCodec().catch(() => null) ?? Promise.resolve(null),
+      sourceAudio?.getCodec().catch(() => null) ?? Promise.resolve(null),
+    ]);
+    const issues = conversion.discardedTracks.flatMap(({ track, reason }) => {
+      if (track.type !== "video" && track.type !== "audio") return [];
+      return [{
+        track: track.type,
+        reason,
+        codec: track.type === "video" ? videoCodec : audioCodec,
+      }];
+    });
+    throw new MediaCapabilityError(explainConversionPlanFailure(request.preset, issues));
   }
 
   conversion.onProgress = (progress: number) => {
