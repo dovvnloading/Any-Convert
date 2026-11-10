@@ -38,6 +38,7 @@ test("codec and audio conservation are verified before a download is allowed", (
   assert.equal(verifyOutput(sample, validateRecipe({ format: "mp4" }), inspectProbe(sample)), true);
   const lostAudio = { ...sample, streams: [sample.streams[0]] };
   assert.throws(() => verifyOutput(lostAudio, validateRecipe({ format: "mp4" }), inspectProbe(sample)), /audio/);
-  assert.throws(() => verifyOutput(sample, validateRecipe({ format: "flac" }), inspectProbe(sample)), /audio/);
+  const wrongAudio = { format: { format_name: "flac", duration: "1.2" }, streams: [{ codec_type: "audio", codec_name: "aac" }] };
+  assert.throws(() => verifyOutput(wrongAudio, validateRecipe({ format: "flac" }), inspectProbe(sample)), /audio/);
   assert.throws(() => verifyOutput({ ...sample, format: { format_name: "avi", duration: "1.2" } }, validateRecipe({ format: "mp4" }), inspectProbe(sample)), /container/);
 });
