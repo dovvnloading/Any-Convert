@@ -6,7 +6,7 @@ const nativeEndpoint = process.env.NATIVE_INTERNAL_URL;
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  transpilePackages: ["@any-convert/contracts"],
+  transpilePackages: ["@any-convert/contracts", "@any-convert/media-core"],
   async rewrites() {
     return nativeEndpoint
       ? [{ source: "/api/native/:path*", destination: nativeEndpoint + "/api/native/:path*" }]

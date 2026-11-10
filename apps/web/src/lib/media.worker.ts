@@ -15,6 +15,7 @@ import {
   WavOutputFormat,
   WebMOutputFormat,
   canEncodeAudio,
+  canEncodeVideo,
 } from "mediabunny";
 import {
   explainMediaError,
@@ -60,6 +61,13 @@ async function inspect(file: File): Promise<MediaInfo> {
     video ? video.canDecode().catch(() => false) : Promise.resolve(false),
     audio ? audio.canDecode().catch(() => false) : Promise.resolve(false),
   ]);
+  // This preflight measures the active browser rather than relying on a UA list.
+  // Bundled AAC/MP3/FLAC encoders are loaded on demand at conversion time.
+  const [avc, vp9, opus] = await Promise.all([
+    video ? canEncodeVideo("avc").catch(() => false) : Promise.resolve(false),
+    video ? canEncodeVideo("vp9").catch(() => false) : Promise.resolve(false),
+    audio ? canEncodeAudio("opus").catch(() => false) : Promise.resolve(false),
+  ]);
   return {
     container: sourceFormat.constructor.name.replace(/InputFormat$/, "").toUpperCase(),
     duration: duration !== null && Number.isFinite(duration) && duration > 0 ? duration : null,
@@ -68,6 +76,8 @@ async function inspect(file: File): Promise<MediaInfo> {
     hasAudio: Boolean(audio),
     canDecodeVideo,
     canDecodeAudio,
+    fileBytes: file.size,
+    encoderSupport: { avc, vp9, opus },
   };
 }
 

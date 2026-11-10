@@ -40,6 +40,9 @@ importers:
       '@any-convert/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@any-convert/media-core':
+        specifier: workspace:*
+        version: link:../../packages/media-core
       '@mediabunny/aac-encoder':
         specifier: 1.65.2
         version: 1.65.2(mediabunny@1.65.2)
@@ -70,6 +73,8 @@ importers:
         version: 19.3.0(@types/react@19.3.0)
 
   packages/contracts: {}
+
+  packages/media-core: {}
 
 packages:
 

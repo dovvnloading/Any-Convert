@@ -7,6 +7,7 @@ import {
   getFormat,
   isAudioFormat,
   safeOutputName,
+  recommendedLocalFormat,
   validFormats,
   validProgress,
 } from "@/lib/converter-contract";
@@ -153,7 +154,7 @@ export function VideoWorkspace() {
       return;
     }
     if (file.size > MAX_LOCAL_BYTES) {
-      setError("This browser-only release supports files up to 256 MB. Larger jobs will need the future cloud engine.");
+      setError("This on-device mode supports files up to 256 MB. A separately self-hosted Native Engine handles eligible larger files after consent.");
       return;
     }
     stopWorker();
@@ -173,7 +174,7 @@ export function VideoWorkspace() {
         workerRef.current?.terminate();
         workerRef.current = null;
         setInfo(message.info);
-        setFormat(message.info.hasVideo ? "mp4" : "mp3");
+        setFormat(recommendedLocalFormat(message.info) ?? (message.info.hasVideo ? "mp4" : "mp3"));
         setStage("ready");
       } else if (message.type === "error") {
         workerRef.current?.terminate();
@@ -454,6 +455,12 @@ export function VideoWorkspace() {
                       </label>
                     ))}
                   </div>
+                  {supported.length === 0 && (
+                    <p className="settings-note" role="status">
+                      This device cannot currently process the required tracks or codecs.
+                      Try another supported browser or a separately self-hosted Native Engine.
+                    </p>
+                  )}
                 </fieldset>
                 {!isAudio && (
                   <>
@@ -505,7 +512,7 @@ export function VideoWorkspace() {
                   <button type="button" className="text-action" onClick={() => changeFormat(format)}>Convert another format <Icon name="repeat" size={14}/></button>
                 </>
               ) : (
-                <button type="button" className="primary-action" onClick={startConversion} disabled={!info || busy}>
+                <button type="button" className="primary-action" onClick={startConversion} disabled={!info || busy || !supported.includes(format)}>
                   {processing ? prettyStage(stage) : "Convert ".concat(selection.label)} <Icon name={processing ? "pause" : "arrow"}/>
                 </button>
               )}
@@ -527,7 +534,7 @@ export function VideoWorkspace() {
           <div className="below-grid">
             <div className="below-item"><span className="below-number">01</span><strong>Private by default</strong><p>Your selected media is read and converted locally. We don't upload it to our servers or save it to an account.</p></div>
             <div className="below-item"><span className="below-number">02</span><strong>Actual conversion</strong><p>Real encoding, progress and output verification. Download your result when it is ready; no fake completion screens.</p></div>
-            <div className="below-item"><span className="below-number">03</span><strong>Honest compatibility</strong><p>Up to 256 MB for this local release. Available codecs depend on your browser. AI masking and larger cloud jobs are in development.</p></div>
+            <div className="below-item"><span className="below-number">03</span><strong>Honest compatibility</strong><p>Up to 256 MB for this local release. Available codecs depend on your browser. AI masking and cloud-scale processing are not part of this local release.</p></div>
           </div>
         </section>
       </main>

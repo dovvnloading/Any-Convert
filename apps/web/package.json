@@ -17,7 +17,8 @@
     "mediabunny": "1.65.2",
     "@mediabunny/mp3-encoder": "1.62.1",
     "@mediabunny/aac-encoder": "1.65.2",
-    "@mediabunny/flac-encoder": "1.65.0"
+    "@mediabunny/flac-encoder": "1.65.0",
+    "@any-convert/media-core": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "19.3.0",

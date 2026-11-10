@@ -5,10 +5,12 @@ COPY apps/web/package.json apps/web/package.json
 COPY apps/media-worker/package.json apps/media-worker/package.json
 COPY apps/native-service/package.json apps/native-service/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
+COPY packages/media-core/package.json packages/media-core/package.json
 RUN corepack enable && pnpm install --frozen-lockfile
 COPY apps/web apps/web
 COPY apps/media-worker apps/media-worker
 COPY packages/contracts packages/contracts
+COPY packages/media-core packages/media-core
 COPY tsconfig.base.json tsconfig.base.json
 ARG NEXT_PUBLIC_ENABLE_NATIVE=true
 ENV NEXT_PUBLIC_ENABLE_NATIVE=$NEXT_PUBLIC_ENABLE_NATIVE

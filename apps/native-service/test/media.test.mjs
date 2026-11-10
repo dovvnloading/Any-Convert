@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildArgs, inspectProbe, validateRecipe, verifyOutput } from "../src/media.mjs";
+import { buildArgs, FORMATS, inspectProbe, validateRecipe, verifyOutput } from "../src/media.mjs";
+import registry from "../../../packages/media-core/format-registry.json" with { type: "json" };
 
 const sample = {
   format: { format_name: "mov,mp4,m4a,3gp,3g2,mj2", duration: "1.2" },
@@ -9,6 +10,14 @@ const sample = {
     { codec_type: "audio", codec_name: "aac" },
   ],
 };
+test("native FFmpeg profiles are derived from the shared manifest", () => {
+  assert.deepEqual(Object.keys(FORMATS), registry.formats.filter((format) => format.native).map((format) => format.id));
+  for (const format of registry.formats.filter((item) => item.native)) {
+    assert.equal(FORMATS[format.id].audio, format.nativeAudioCodec);
+    assert.equal(FORMATS[format.id].video, format.nativeVideoCodec);
+    assert.equal(FORMATS[format.id].mime, format.mime);
+  }
+});
 test("strict recipe registry blocks arbitrary filters and invalid dimensions", () => {
   assert.deepEqual(validateRecipe({ format: "mp4" }), { format: "mp4", quality: "balanced", height: null });
   assert.throws(() => validateRecipe({ format: "mp4;rm -rf /" }), /Unsupported/);

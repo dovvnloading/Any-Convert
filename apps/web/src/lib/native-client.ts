@@ -1,16 +1,13 @@
+import { NATIVE_FORMATS as REGISTRY_NATIVE_FORMATS } from "@any-convert/media-core";
+import type { FormatId } from "@any-convert/media-core";
+
 export const NATIVE_ENDPOINT = "/api/native";
 
-export const NATIVE_FORMATS = [
-  { id: "mp4", title: "MP4", subtitle: "H.264 · AAC", kind: "video" },
-  { id: "mov", title: "MOV", subtitle: "H.264 · AAC", kind: "video" },
-  { id: "webm", title: "WebM", subtitle: "VP9 · Opus", kind: "video" },
-  { id: "mp3", title: "MP3", subtitle: "Audio only", kind: "audio" },
-  { id: "wav", title: "WAV", subtitle: "Uncompressed", kind: "audio" },
-  { id: "flac", title: "FLAC", subtitle: "Lossless", kind: "audio" },
-  { id: "gif", title: "GIF", subtitle: "Animated · 12fps", kind: "image" },
-] as const;
+export const NATIVE_FORMATS = REGISTRY_NATIVE_FORMATS.map((format) => ({
+  id: format.id, title: format.label, subtitle: format.detail, kind: format.group,
+}));
 
-export type NativeFormat = (typeof NATIVE_FORMATS)[number]["id"];
+export type NativeFormat = FormatId;
 export type NativeQuality = "high" | "balanced" | "small";
 export type NativeHeight = null | 480 | 720 | 1080;
 export type NativeJobState =

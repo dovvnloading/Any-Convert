@@ -70,6 +70,7 @@ verification and Docker Compose configuration.
 - [docs/SELF_HOST.md](docs/SELF_HOST.md) — deploy your own native converter.
 - [docs/NATIVE_API.md](docs/NATIVE_API.md) — documented local processing API.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — media engine design.
+- [docs/INTELLIGENCE_CORE.md](docs/INTELLIGENCE_CORE.md) — versioned format catalog, capability planner and tested recipes.
 - [docs/EXPERIENCE_SPEC.md](docs/EXPERIENCE_SPEC.md) — interaction and visual standards.
 - [docs/AI_EXTENSION_CONTRACT.md](docs/AI_EXTENSION_CONTRACT.md) — open-model architecture.
 - [docs/RESEARCH_DECISIONS.md](docs/RESEARCH_DECISIONS.md) — implementation research.
