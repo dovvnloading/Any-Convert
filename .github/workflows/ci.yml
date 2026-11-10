@@ -50,6 +50,8 @@ jobs:
         run: pnpm test:native
       - name: Validate Docker Compose configuration
         run: docker compose --env-file .env.example config --quiet
+      - name: Build self-hosted Docker images
+        run: docker compose --env-file .env.example build
       - name: Start native service for browser tests
         run: |
           mkdir -p "$RUNNER_TEMP/any-convert-native"
