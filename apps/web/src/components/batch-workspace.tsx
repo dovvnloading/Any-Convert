@@ -408,7 +408,7 @@ export function BatchWorkspace() {
               event.preventDefault();
               if (!busy && archive.status !== "packing") void importFiles(Array.from(event.dataTransfer.files));
             }}>
-            <input ref={picker} aria-label="Choose media files" type="file" multiple
+            <input ref={picker} aria-label="Select local batch files" type="file" multiple
               accept="video/*,audio/*,.mkv,.avi,.mov,.flac,.wav,.webm,.mp4,.mp3"
               disabled={busy || archive.status === "packing"}
               onChange={(event) => {
