@@ -17,6 +17,7 @@ import type {
 } from "@/lib/converter-contract";
 import { formatBytes, formatDuration } from "@/lib/media";
 import { makeTemporaryExportKey, removeTemporaryExport, sweepStaleTemporaryExports } from "@/lib/output-storage";
+import { useClipboardMediaImport } from "@/lib/clipboard-media";
 
 type Stage = "idle" | "inspecting" | "ready" | "preparing" | "converting" | "verifying" | "done" | "error";
 type Source = { file: File; url: string };
@@ -202,6 +203,8 @@ export function VideoWorkspace() {
     worker?.postMessage({ type: "inspect", id, file });
   }
 
+  useClipboardMediaImport((files) => importFile(files[0]), busy);
+
   function openPicker(): void {
     if (busy) return;
     if (!pickerRef.current) return;
@@ -383,7 +386,7 @@ export function VideoWorkspace() {
                 <div className="import-orbit" aria-hidden="true"><span>+</span></div>
                 <span className="stage-eyebrow">IT STARTS WITH ONE FILE</span>
                 <h2>Drop something good.</h2>
-                <p>Video, audio, and everything in between.</p>
+                <p>Video or audio — drop, browse, or paste a copied file (Ctrl/⌘+V).</p>
                 <button type="button" className="light-button" onClick={openPicker}>Choose a file <Icon name="arrow"/></button>
                 <span className="stage-subline">UP TO 256 MB <span className="subline-divider"/> STAYS ON YOUR DEVICE</span>
                 {error && !source && <div className="stage-error" role="alert">{error}</div>}

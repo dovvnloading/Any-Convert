@@ -9,6 +9,7 @@ import type {
   FormatId, HeightLimit, MediaInfo, QualityId, WorkerRequest, WorkerResponse,
 } from "@/lib/converter-contract";
 import { formatBytes } from "@/lib/media";
+import { useClipboardMediaImport } from "@/lib/clipboard-media";
 import {
   makeTemporaryExportKey, removeTemporaryExport, sweepStaleTemporaryExports,
 } from "@/lib/output-storage";
@@ -216,6 +217,11 @@ export function BatchWorkspace() {
     setPhase("ready");
   }
 
+  useClipboardMediaImport(
+    (files) => { void importFiles(files); },
+    phase === "running" || phase === "inspecting" || archive.status === "packing",
+  );
+
   function toggleFormat(format: FormatId) {
     if (phase === "running" || phase === "inspecting") return;
     setFormats((previous) => previous.includes(format)
@@ -415,7 +421,7 @@ export function BatchWorkspace() {
                 void importFiles(Array.from(event.target.files ?? []));
                 event.target.value = "";
               }} />
-            <p>Drag up to eight video or audio files here, or choose them below.</p>
+            <p>Drag or paste up to eight video/audio files (Ctrl/⌘+V), or browse below.</p>
             <button type="button" className="batch-button" disabled={busy || archive.status === "packing"}
               onClick={() => picker.current?.click()}>Choose media files</button>
             <small>On-device only · 256 MB fallback · experimental 1 GB disk-backed mode</small>
