@@ -11,7 +11,7 @@
     "dev": "pnpm --filter @any-convert/web dev",
     "build": "pnpm --filter @any-convert/web build",
     "typecheck": "pnpm -r --if-present typecheck",
-    "lint": "biome lint .",
+    "lint": "biome lint --max-diagnostics=500 .",
     "test": "vitest run",
     "test:media": "python3 tools/media/run_qa.py",
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm test:media",
