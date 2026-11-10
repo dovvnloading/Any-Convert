@@ -19,6 +19,11 @@ describe("conversion plans", () => {
     expect(validFormats({ ...sample, hasVideo: false, hasAudio: false })).toEqual([]);
     expect(validFormats({ ...sample, canDecodeVideo: false })).toEqual(["mp3", "wav", "flac"]);
     expect(validFormats({ ...sample, canDecodeAudio: false })).toEqual([]);
+    expect(validFormats({ ...sample, canDecodeAudio: false }, { withoutAudio: true }))
+      .toEqual(["mp4", "webm", "mov"]);
+    expect(validFormats({ ...sample, canDecodeVideo: false }, { withoutAudio: true })).toEqual([]);
+    expect(validFormats({ ...sample, hasVideo: false }, { withoutAudio: true }))
+      .toEqual(["mp3", "wav", "flac"]);
     expect(validFormats({ ...sample, fileBytes: MAX_LOCAL_BYTES + 1 })).toEqual([]);
     expect(validFormats({ ...sample, fileBytes: MAX_LOCAL_BYTES + 1, streamingAvailable: true }))
       .toEqual(FORMATS.map((format) => format.id));
@@ -26,6 +31,7 @@ describe("conversion plans", () => {
   });
   it("produces a filename with a safe extension", () => {
     expect(safeOutputName("my.very.long.mov", "mp4")).toBe("my.very.long-converted.mp4");
+    expect(safeOutputName("my.very.long.mov", "mp4", true)).toBe("my.very.long-no-audio-converted.mp4");
     expect(safeOutputName("bad/name:evil?.mkv", "mp3")).toBe("bad-name-evil--converted.mp3");
     expect(getFormat("wav").mime).toBe("audio/wav");
   });
