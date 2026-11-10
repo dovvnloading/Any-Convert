@@ -62,7 +62,7 @@ export function zipCrc32(bytes: Uint8Array): number {
   return (crc ^ 0xffffffff) >>> 0;
 }
 function crcUpdate(crc: number, bytes: Uint8Array): number {
-  for (const byte of bytes) crc = ((crc >>> 8) ^ CRC_TABLE[(crc ^ byte) & 0xff]!) >>> 0;
+  for (const byte of bytes) crc = ((crc >>> 8) ^ (CRC_TABLE[(crc ^ byte) & 0xff] ?? 0)) >>> 0;
   return crc;
 }
 

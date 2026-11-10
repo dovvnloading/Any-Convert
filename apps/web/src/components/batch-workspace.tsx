@@ -403,7 +403,7 @@ export function BatchWorkspace() {
             <div><span>01 / SOURCE</span><h2 id="batch-source-heading">Your media</h2></div>
             <span className="batch-muted">{assets.length} / {MAX_FILES} files</span>
           </div>
-          <div role="group" aria-label="Media drop area" className="batch-drop" onDragOver={(event) => event.preventDefault()}
+          <fieldset aria-label="Media drop area" className="batch-drop" onDragOver={(event) => event.preventDefault()}
             onDrop={(event) => {
               event.preventDefault();
               if (!busy && archive.status !== "packing") void importFiles(Array.from(event.dataTransfer.files));
@@ -419,7 +419,7 @@ export function BatchWorkspace() {
             <button type="button" className="batch-button" disabled={busy || archive.status === "packing"}
               onClick={() => picker.current?.click()}>Choose media files</button>
             <small>On-device only · 256 MB fallback · experimental 1 GB disk-backed mode</small>
-          </div>
+          </fieldset>
           <div className="batch-assets" aria-live="polite">
             {assets.map((asset) => (
               <div className="batch-asset" key={asset.id}>

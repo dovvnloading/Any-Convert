@@ -441,7 +441,7 @@ legend { padding: 0; }
 @media(prefers-reduced-motion:reduce) {
   .native-source, .native-preset-grid label { transition: none; }
 }
-\n
+
 /* Batch Studio — the same quiet, editorial workspace as the single-file tool */
 .batch-hero { display: flex; align-items: end; justify-content: space-between; gap: 32px; padding: 38px 0 30px; }
 .batch-hero h1 { max-width: 780px; font-size: clamp(36px, 5vw, 64px); font-weight: 560; letter-spacing: -.065em; line-height: 1.03; }
