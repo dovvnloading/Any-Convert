@@ -13,7 +13,11 @@ COPY tsconfig.base.json tsconfig.base.json
 ARG NEXT_PUBLIC_ENABLE_NATIVE=true
 ENV NEXT_PUBLIC_ENABLE_NATIVE=$NEXT_PUBLIC_ENABLE_NATIVE
 RUN pnpm --filter @any-convert/web build
+# Runtime must never reach package registries: all dependencies are installed
+# during image creation, before the isolated Docker network is used.
+RUN mkdir -p apps/web/.next/cache && chown -R node:node apps/web/.next
 USER node
+WORKDIR /app/apps/web
 ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0
 EXPOSE 3000
-CMD ["pnpm", "--filter", "@any-convert/web", "start"]
+CMD ["node", "node_modules/next/dist/bin/next", "start", "-H", "0.0.0.0", "-p", "3000"]
