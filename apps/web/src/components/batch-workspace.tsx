@@ -433,7 +433,7 @@ export function BatchWorkspace() {
                 <div className="batch-asset-info">
                   <strong title={asset.file.name}>{asset.file.name}</strong>
                   <span>{formatBytes(asset.file.size)} · {asset.error ? asset.error
-                    : asset.info ? `Ready · Suggested ${String(recommendedLocalFormat(asset.info) ?? "none").toUpperCase()}`
+                    : asset.info ? `Ready · Video ${asset.info.videoCodec?.toUpperCase() ?? "none"} · Audio ${asset.info.audioCodec?.toUpperCase() ?? "none"} · Suggested ${String(recommendedLocalFormat(asset.info) ?? "none").toUpperCase()}`
                     : "Inspecting codecs…"}</span>
                 </div>
                 <span className={`batch-chip ${asset.error ? "is-error" : asset.info ? "is-ready" : ""}`}>
