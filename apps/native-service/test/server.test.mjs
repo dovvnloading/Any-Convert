@@ -79,7 +79,7 @@ test("privacy: session ownership, origin check and strict upload limits", async 
 test("full workflow: upload, FFmpeg MP4, progress, scoped download, delete", async (t) => {
   const env = await setup(t);
   const bytes = await readFile(join(fixtures, "baseline-h264-aac.mp4"));
-  const { res, cookie } = await env.create("camera.mov", bytes.length);
+  const { res, cookie } = await env.create("café 雪.mov", bytes.length);
   assert.equal(res.status, 201);
   const job = await res.json();
 
@@ -103,6 +103,7 @@ test("full workflow: upload, FFmpeg MP4, progress, scoped download, delete", asy
   assert.equal(download.status, 200);
   assert.match(download.headers.get("content-type"), /video\/mp4/);
   assert.match(download.headers.get("content-disposition"), /attachment/);
+  assert.match(download.headers.get("content-disposition"), /filename\*=UTF-8/);
   const output = join(env.dir, "actual.mp4");
   await writeFile(output, Buffer.from(await download.arrayBuffer()));
   const probe = JSON.parse(execFileSync("ffprobe", [
