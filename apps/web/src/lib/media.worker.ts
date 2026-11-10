@@ -4,6 +4,7 @@ import {
   ALL_FORMATS,
   BlobSource,
   BufferTarget,
+  StreamTarget,
   Conversion,
   FlacOutputFormat,
   Input,
@@ -22,10 +23,12 @@ import {
   getFormat,
   isAudioFormat,
   MAX_LOCAL_BYTES,
+  MAX_STREAMING_BYTES,
 } from "./converter-contract";
 import type {
   ConvertRequest, FormatId, MediaInfo, WorkerRequest, WorkerResponse,
 } from "./converter-contract";
+import { TEMP_EXPORT_DIR, isTemporaryExportKey } from "./output-storage";
 
 const scope = self as unknown as DedicatedWorkerGlobalScope;
 
@@ -36,6 +39,28 @@ const scope = self as unknown as DedicatedWorkerGlobalScope;
  */
 function send(message: WorkerResponse, transfer: Transferable[] = []) {
   scope.postMessage(message, transfer);
+}
+
+async function supportsDiskTarget(fileBytes: number): Promise<boolean> {
+  try {
+    if (!navigator.storage?.getDirectory) return false;
+    const estimated = await navigator.storage.estimate();
+    if (Number.isFinite(estimated.quota) && Number.isFinite(estimated.usage) &&
+        (estimated.quota ?? 0) - (estimated.usage ?? 0) < fileBytes) return false;
+    const root = await navigator.storage.getDirectory();
+    const directory = await root.getDirectoryHandle(TEMP_EXPORT_DIR, { create: true });
+    const key = "probe-" + crypto.randomUUID();
+    const handle = await directory.getFileHandle(key, { create: true });
+    try {
+      const writable = await handle.createWritable();
+      await writable.close();
+      return true;
+    } finally {
+      await directory.removeEntry(key).catch(() => {});
+    }
+  } catch {
+    return false;
+  }
 }
 
 function makeInput(file: File): Input {
@@ -77,6 +102,7 @@ async function inspect(file: File): Promise<MediaInfo> {
     canDecodeVideo,
     canDecodeAudio,
     fileBytes: file.size,
+    streamingAvailable: await supportsDiskTarget(file.size),
     encoderSupport: { avc, vp9, opus },
   };
 }
@@ -96,11 +122,13 @@ async function loadEncoder(id: FormatId): Promise<void> {
   }
 }
 
-function makeFormat(id: FormatId) {
+function makeFormat(id: FormatId, streaming: boolean) {
   switch (id) {
-    case "mp4": return new Mp4OutputFormat({ fastStart: "in-memory" });
+    // Never use in-memory faststart for a streaming target: it buffers media
+    // until finalization. Non-faststart is seekable and keeps memory bounded.
+    case "mp4": return new Mp4OutputFormat({ fastStart: streaming ? false : "in-memory" });
     case "webm": return new WebMOutputFormat();
-    case "mov": return new MovOutputFormat();
+    case "mov": return new MovOutputFormat({ fastStart: streaming ? false : "in-memory" });
     case "mp3": return new Mp3OutputFormat();
     case "wav": return new WavOutputFormat();
     case "flac": return new FlacOutputFormat();
@@ -108,7 +136,10 @@ function makeFormat(id: FormatId) {
 }
 
 async function convert(request: ConvertRequest): Promise<void> {
-  if (request.file.size > MAX_LOCAL_BYTES) throw new Error("Out of memory: file too large for local conversion");
+  if (request.file.size > MAX_STREAMING_BYTES) throw new Error("The file is larger than the experimental disk-backed limit");
+  if (!isTemporaryExportKey(request.storageKey) || !request.storageKey.endsWith("." + request.preset)) {
+    throw new Error("Invalid temporary output key");
+  }
   send({ type: "stage", id: request.id, stage: "preparing" });
   const input = makeInput(request.file);
   if (!(await input.canRead())) throw new Error("Unreadable media input");
@@ -120,9 +151,26 @@ async function convert(request: ConvertRequest): Promise<void> {
   if (!audioOnly && !sourceVideo) throw new Error("No video track");
 
   await loadEncoder(request.preset);
-  const format = makeFormat(request.preset);
-  const target = new BufferTarget();
-  const output = new Output({ format, target });
+  const streaming = await supportsDiskTarget(request.file.size);
+  if (!streaming && request.file.size > MAX_LOCAL_BYTES) {
+    throw new Error("Disk-backed conversion is unavailable or storage quota is too small");
+  }
+  const format = makeFormat(request.preset, streaming);
+  let diskDirectory: FileSystemDirectoryHandle | null = null;
+  let diskHandle: FileSystemFileHandle | null = null;
+  const memory = streaming ? null : new BufferTarget();
+  if (streaming) {
+    const root = await navigator.storage.getDirectory();
+    diskDirectory = await root.getDirectoryHandle(TEMP_EXPORT_DIR, { create: true });
+    diskHandle = await diskDirectory.getFileHandle(request.storageKey, { create: true });
+  }
+  let finished = false;
+  try {
+    const writable = diskHandle ? await diskHandle.createWritable() : null;
+    const target = writable
+      ? new StreamTarget(writable, { chunked: true, chunkSize: 1024 * 1024 })
+      : memory!;
+    const output = new Output({ format, target });
   const quality = request.quality === "source" ? undefined
     : new Quality(request.quality === "compact" ? "medium" : "high");
   const resize = !audioOnly && sourceVideo && request.height !== "original"
@@ -168,12 +216,14 @@ async function convert(request: ConvertRequest): Promise<void> {
   await conversion.execute();
   send({ type: "stage", id: request.id, stage: "verifying" });
 
-  const buffer = target.buffer;
-  if (!buffer || buffer.byteLength < 64) throw new Error("Invalid empty conversion output");
-  // Independently inspect the output, not only its file extension.
+  const outputBlob = memory
+    ? (memory.buffer ? new Blob([memory.buffer], { type: format.mimeType }) : null)
+    : await diskHandle!.getFile();
+  if (!outputBlob || outputBlob.size < 64) throw new Error("Invalid empty conversion output");
+  // Verify the completed file from disk rather than reassembling it in RAM.
   const verification = new Input({
     formats: ALL_FORMATS,
-    source: new BlobSource(new Blob([buffer], { type: format.mimeType })),
+    source: new BlobSource(outputBlob),
   });
   if (!(await verification.canRead())) throw new Error("Invalid output after encoding");
   const [video, audio] = await Promise.all([
@@ -195,14 +245,23 @@ async function convert(request: ConvertRequest): Promise<void> {
     }
   }
 
-  send({
-    type: "complete",
-    id: request.id,
-    buffer,
-    mime: getFormat(request.preset).mime,
-    extension: request.preset,
-    bytes: buffer.byteLength,
-  }, [buffer]);
+  const mime = getFormat(request.preset).mime;
+  if (memory) {
+    const buffer = memory.buffer;
+    if (!buffer || buffer.byteLength < 64) throw new Error("Invalid empty conversion output");
+    send({ type: "complete", id: request.id, buffer, mime,
+      extension: request.preset, bytes: buffer.byteLength }, [buffer]);
+  } else {
+    const file = await diskHandle!.getFile();
+    send({ type: "complete", id: request.id, file, storageKey: request.storageKey,
+      mime, extension: request.preset, bytes: file.size });
+  }
+  finished = true;
+  } finally {
+    if (!finished && diskDirectory) {
+      await diskDirectory.removeEntry(request.storageKey).catch(() => {});
+    }
+  }
 }
 
 scope.onmessage = (event: MessageEvent<WorkerRequest>) => {
