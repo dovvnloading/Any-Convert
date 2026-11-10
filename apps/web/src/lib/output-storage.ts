@@ -33,7 +33,11 @@ export async function sweepStaleTemporaryExports(): Promise<void> {
   try {
     const root = await navigator.storage.getDirectory();
     const directory = await root.getDirectoryHandle(TEMP_EXPORT_DIR);
-    for await (const [key, handle] of directory.entries()) {
+    // TS DOM libs have not standardized the iterable declaration yet.
+    const iterable = directory as FileSystemDirectoryHandle & {
+      entries(): AsyncIterable<[string, FileSystemHandle]>;
+    };
+    for await (const [key, handle] of iterable.entries()) {
       if (!isTemporaryExportKey(key) || handle.kind !== "file") continue;
       try {
         const file = await (handle as FileSystemFileHandle).getFile();
