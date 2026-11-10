@@ -1,14 +1,18 @@
 import { spawn } from "node:child_process";
+import registry from "../../../packages/media-core/format-registry.json" with { type: "json" };
 
-export const FORMATS = Object.freeze({
-  mp4: { extension: "mp4", mime: "video/mp4", kind: "video", video: "h264", audio: "aac" },
-  mov: { extension: "mov", mime: "video/quicktime", kind: "video", video: "h264", audio: "aac" },
-  webm: { extension: "webm", mime: "video/webm", kind: "video", video: "vp9", audio: "opus" },
-  mp3: { extension: "mp3", mime: "audio/mpeg", kind: "audio", audio: "mp3" },
-  wav: { extension: "wav", mime: "audio/wav", kind: "audio", audio: "pcm_s16le" },
-  flac: { extension: "flac", mime: "audio/flac", kind: "audio", audio: "flac" },
-  gif: { extension: "gif", mime: "image/gif", kind: "image", video: "gif" },
-});
+// Runtime catalog is shared with the browser: do not maintain a second
+// container/codec allowlist in this service.
+if (registry.version !== 1) throw new Error("Unsupported media registry version");
+export const FORMATS = Object.freeze(Object.fromEntries(
+  registry.formats.filter((format) => format.native).map((format) => [
+    format.id,
+    Object.freeze({
+      extension: format.id, mime: format.mime, kind: format.group,
+      video: format.nativeVideoCodec, audio: format.nativeAudioCodec,
+    }),
+  ]),
+));
 
 const QUALITIES = new Set(["high", "balanced", "small"]);
 const HEIGHTS = new Set([null, 480, 720, 1080]);

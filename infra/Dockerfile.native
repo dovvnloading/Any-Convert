@@ -5,6 +5,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --chown=node:node apps/native-service ./apps/native-service
+COPY --chown=node:node packages/media-core/format-registry.json ./packages/media-core/format-registry.json
 USER node
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=4300 MEDIA_DIR=/data
 EXPOSE 4300

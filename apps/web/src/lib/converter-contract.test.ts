@@ -5,7 +5,7 @@ import type { MediaInfo } from "./converter-contract";
 const sample: MediaInfo = {
   container: "mp4", duration: 1.2, width: 1920, height: 1080,
   videoCodec: "avc", audioCodec: "aac", hasVideo: true, hasAudio: true,
-  canDecodeVideo: true, canDecodeAudio: true,
+  canDecodeVideo: true, canDecodeAudio: true, fileBytes: 1_000_000,
 };
 
 describe("conversion plans", () => {
@@ -17,6 +17,10 @@ describe("conversion plans", () => {
     expect(validFormats({ ...sample, hasAudio: false })).toEqual(["mp4","webm","mov"]);
     expect(validFormats({ ...sample, hasVideo: false })).toEqual(["mp3","wav","flac"]);
     expect(validFormats({ ...sample, hasVideo: false, hasAudio: false })).toEqual([]);
+    expect(validFormats({ ...sample, canDecodeVideo: false })).toEqual(["mp3", "wav", "flac"]);
+    expect(validFormats({ ...sample, canDecodeAudio: false })).toEqual([]);
+    expect(validFormats({ ...sample, fileBytes: MAX_LOCAL_BYTES + 1 })).toEqual([]);
+    expect(validFormats({ ...sample, encoderSupport: { vp9: false } })).toEqual(["mp4", "mov", "mp3", "wav", "flac"]);
   });
   it("produces a filename with a safe extension", () => {
     expect(safeOutputName("my.very.long.mov", "mp4")).toBe("my.very.long-converted.mp4");
