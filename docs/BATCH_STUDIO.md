@@ -2,6 +2,7 @@
 
 A user-selectable `/batch` workspace creates independently verified,
 on-device MP4/MOV/WebM/MP3/WAV/FLAC outputs from up to eight media files.
+Files can be selected, dropped, or pasted from a clipboard that exposes audio/video File objects (Ctrl/⌘+V). Text, screenshots and pastes into form fields are left alone. Eight-file and size limits also apply to pasted media.
 Only supported source/output pairs are queued. The work queue runs **one
 browser media worker at a time** to limit memory pressure, with honest
 progress, cancellation and a per-export retry button. No background cloud job
