@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FORMATS, MAX_LOCAL_BYTES, explainMediaError, getFormat, safeOutputName, validFormats, validProgress } from "./converter-contract";
+import { FORMATS, MAX_LOCAL_BYTES, MediaCapabilityError, explainConversionPlanFailure, explainMediaError, getFormat, safeOutputName, validFormats, validProgress } from "./converter-contract";
 import type { MediaInfo } from "./converter-contract";
 
 const sample: MediaInfo = {
@@ -34,6 +34,33 @@ describe("conversion plans", () => {
     expect(validProgress(0.503)).toBe(50);
     expect(validProgress(NaN)).toBeNull();
     expect(validProgress(-0.1)).toBeNull();
+  });
+  it("explains an unsupported input decoder instead of suggesting an unrelated output preset", () => {
+    const message = explainConversionPlanFailure("mp4", [
+      { track: "video", reason: "undecodable_source_codec", codec: "hevc" },
+    ]);
+    expect(message).toContain("H.265/HEVC video");
+    expect(message).toContain("Changing the output format will not add a missing decoder");
+    expect(explainMediaError(new MediaCapabilityError(message))).toBe(message);
+  });
+  it("distinguishes an unavailable output encoder, unknown input, and uncopyable track", () => {
+    expect(explainConversionPlanFailure("mp4", [
+      { track: "audio", reason: "no_encodable_target_codec", codec: "aac" },
+    ])).toContain("cannot encode the audio track required for MP4");
+    expect(explainConversionPlanFailure("webm", [
+      { track: "video", reason: "unknown_source_codec", codec: null },
+    ])).toContain("video codec is unknown");
+    expect(explainConversionPlanFailure("mov", [
+      { track: "video", reason: "cannot_copy", codec: "avc" },
+    ])).toContain("cannot be copied into MOV");
+    expect(explainConversionPlanFailure("mp3", [
+      { track: "video", reason: "discarded_by_user", codec: "avc" },
+    ])).toContain("cannot build a valid MP3");
+  });
+  it("never exposes internal metadata while forming a codec diagnostic", () => {
+    expect(explainConversionPlanFailure("mp4", [
+      { track: "video", reason: "undecodable_source_codec", codec: "/private/file/secret" },
+    ])).not.toContain("secret");
   });
   it("does not leak internal exception text", () => {
     expect(explainMediaError(new Error("Codec cannot decode secret/test.mp4"))).not.toContain("secret");
