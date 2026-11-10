@@ -7,7 +7,7 @@ import { pasteFixtureFiles } from "./clipboard";
 
 const fixtureRoot = resolve("tests/fixtures/generated");
 
-async function inspectDownload(download: import("@playwright/test").Download, expectedCodec: string) {
+async function inspectDownload(download: import("@playwright/test").Download, expectedCodec: string, additionalCodec?: string) {
   const temp = await mkdtemp(join(tmpdir(), "any-convert-playwright-"));
   try {
     const file = join(temp, download.suggestedFilename());
@@ -19,6 +19,9 @@ async function inspectDownload(download: import("@playwright/test").Download, ex
       "-of", "json", file,
     ], { encoding: "utf8" }));
     expect(json.streams.some((track: { codec_name: string }) => track.codec_name === expectedCodec)).toBeTruthy();
+    if (additionalCodec) {
+      expect(json.streams.some((track: { codec_name: string }) => track.codec_name === additionalCodec)).toBeTruthy();
+    }
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
@@ -35,7 +38,43 @@ test("video is inspected, remuxed to MOV, verified and downloaded", async ({ pag
   await expect(downloadLink).toBeVisible({ timeout: 100_000 });
   const downloadPromise = page.waitForEvent("download");
   await downloadLink.click();
-  await inspectDownload(await downloadPromise, "h264");
+  await inspectDownload(await downloadPromise, "h264", "aac");
+});
+
+test("video with AC-3 audio can be exported without sound, with actual codec verification", async ({ page }) => {
+  const uploads: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" || request.method() === "PUT") uploads.push(request.url());
+  });
+  await page.goto("/");
+  await page.locator('input[type="file"]').setInputFiles(join(fixtureRoot, "mkv-h264-ac3.mkv"));
+  const silent = page.getByRole("checkbox", { name: /Export video without audio/i });
+  await expect(silent).toBeVisible({ timeout: 60_000 });
+  await expect(silent).not.toBeChecked();
+  await silent.check();
+  const convert = page.getByRole("button", { name: "Convert MP4" });
+  await expect(convert).toBeEnabled();
+  await convert.click();
+  const link = page.getByRole("link", { name: /Download.*no-audio-converted\.mp4/i });
+  await expect(link).toBeVisible({ timeout: 120_000 });
+  await expect(page.getByText(/Verified output.*video only.*no audio/i)).toBeVisible();
+  const downloadPromise = page.waitForEvent("download");
+  await link.click();
+  const download = await downloadPromise;
+  const temp = await mkdtemp(join(tmpdir(), "any-convert-silent-"));
+  try {
+    const output = join(temp, "video-only.mp4");
+    await download.saveAs(output);
+    const streams = JSON.parse(execFileSync("ffprobe", [
+      "-v", "error", "-show_entries", "stream=codec_name,codec_type",
+      "-of", "json", output,
+    ], { encoding: "utf8" })).streams as { codec_name: string; codec_type: string }[];
+    expect(streams.filter((s) => s.codec_type === "video").map((s) => s.codec_name)).toEqual(["h264"]);
+    expect(streams.filter((s) => s.codec_type === "audio")).toEqual([]);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+  expect(uploads).toEqual([]);
 });
 
 test("pasting a media file imports it without hijacking text fields", async ({ page }) => {

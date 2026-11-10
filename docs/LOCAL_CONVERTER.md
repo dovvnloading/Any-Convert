@@ -10,6 +10,9 @@ gated on successful browser E2E tests and deployment verification.
 2. A dedicated Web Worker probes the real container, primary audio/video
    tracks, display dimensions, duration, codecs, and decodability.
 3. Pick MP4/WebM/MOV if video exists; MP3/WAV/FLAC if audio exists.
+   For a video with an audio track that the browser cannot decode, explicitly
+   choose **Export video without audio** to save a silent video. This never
+   happens automatically; the original file and its sound are unchanged.
    Choose original-compatible quality, balanced, or smaller; optionally
    constrain the maximum video resolution.
 4. Convert in a separate worker. Progress is based on processed media
@@ -49,6 +52,12 @@ the tab stops ongoing conversion.
   runs on the next visit after 24 hours. Crash or abrupt tab closure can leave
   temporary local output until cleanup or browser site data is cleared.
 - Browser support and hardware acceleration vary. No DRM circumvention.
+- Video-only fallback does **not** enable missing video decoders. It is useful
+  only when a readable video track can be retained or encoded without sound.
+  The verified output contains no audio and is named `-no-audio-converted`.
+  Tests use a real H.264 + AC-3 MKV fixture and independently check that the
+  downloaded MP4 has H.264 video and no audio. Ordinary exports still preserve
+  the available audio track.
 - No background removal, frame generation, batch, resumable upload,
   server conversion, transparent video, or persistent cloud jobs yet.
 

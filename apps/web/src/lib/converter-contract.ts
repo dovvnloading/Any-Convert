@@ -45,6 +45,7 @@ export type ConvertRequest = {
   preset: FormatId;
   quality: QualityId;
   height: HeightLimit;
+  omitAudio?: boolean; // explicit video-only export; never silently drop audio
   storageKey: string; // app-generated, allowlisted OPFS temporary output name
 };
 export type WorkerRequest = InspectRequest | ConvertRequest;
@@ -65,16 +66,17 @@ export function isAudioFormat(id: FormatId): boolean {
   return getFormat(id).group === "audio";
 }
 
-export function validFormats(info: MediaInfo): FormatId[] {
+export function validFormats(info: MediaInfo, options: { withoutAudio?: boolean } = {}): FormatId[] {
+  const withoutAudio = options.withoutAudio === true && info.hasVideo;
   const media: MediaFacts = {
     sizeBytes: info.fileBytes,
     durationSeconds: info.duration,
     width: info.width,
     height: info.height,
     videoCodec: info.videoCodec,
-    audioCodec: info.audioCodec,
+    audioCodec: withoutAudio ? null : info.audioCodec,
     hasVideo: info.hasVideo,
-    hasAudio: info.hasAudio,
+    hasAudio: withoutAudio ? false : info.hasAudio,
     canDecodeVideo: info.canDecodeVideo,
     canDecodeAudio: info.canDecodeAudio,
     ...(info.encoderSupport ? { encoderSupport: info.encoderSupport } : {}),
@@ -92,12 +94,12 @@ export function recommendedLocalFormat(info: MediaInfo): FormatId | null {
   return eligible.includes(preferred) ? preferred : (eligible[0] ?? null);
 }
 
-export function safeOutputName(source: string, format: FormatId): string {
+export function safeOutputName(source: string, format: FormatId, withoutAudio = false): string {
   const stem = source.replace(/\.[^./\\]+$/, "").trim()
     .replace(/[/\\<>:"|?*]/g, "-")
     .split("").map((character) => character.charCodeAt(0) < 32 ? "-" : character).join("")
     .replace(/\s+/g, " ").slice(0, 100) || "converted-video";
-  return [stem, "-converted.", format].join("");
+  return [stem, withoutAudio ? "-no-audio-converted." : "-converted.", format].join("");
 }
 
 export function validProgress(n: number): number | null {
