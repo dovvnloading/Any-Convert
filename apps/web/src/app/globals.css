@@ -123,6 +123,12 @@ legend { padding: 0; }
 .source-tags span { font-size: 10px; padding: 5px 7px; color: #58665d; background: #f3f5f0; border: 1px solid #e8ece5; }
 .field-heading { width: 100%; color: #4c5c51; font-weight: 800; letter-spacing: .12em; font-size: 10px; }
 .field-heading span { float: right; font-weight: 600; color: #9ca69b; }
+.video-only-option { display: flex; gap: 12px; align-items: flex-start; padding: 16px 0 3px; cursor: pointer; }
+.video-only-option input { width: 18px; height: 18px; flex: 0 0 auto; accent-color: #456739; margin: 2px 0 0; cursor: pointer; }
+.video-only-option input:focus-visible { outline: 3px solid #496ce4; outline-offset: 3px; }
+.video-only-option span { display: grid; gap: 5px; }
+.video-only-option strong { font-size: 12px; color: #263a29; }
+.video-only-option small { font-size: 11px; color: #647365; line-height: 1.5; }
 .format-fieldset { padding: 20px 0; }
 .format-options { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 7px; margin-top: 15px; }
 .format-option { position: relative; min-width: 0; background: #f8f9f6; border: 1px solid #e0e5dc; padding: 10px 9px 12px; cursor: pointer; transition: background .14s ease, border-color .14s ease; }
