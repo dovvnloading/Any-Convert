@@ -61,6 +61,15 @@ def make() -> dict[str, dict[str, object]]:
            "-b:v", "400k", "-c:a", "libopus", str(webm))
     add(webm.name, "matroska", ["vp9", "opus"], (160, 90))
 
+    # WebM screen captures may have odd frame dimensions. H.264's common
+    # 4:2:0 encoding path cannot always accept them without even padding.
+    odd_webm = OUT / "odd-vp9-opus.webm"
+    ffmpeg("-f", "lavfi", "-i", "testsrc=size=161x91:rate=24:duration=1.2",
+           *audio_source(), "-c:v", "libvpx-vp9", "-deadline", "realtime",
+           "-cpu-used", "8", "-pix_fmt", "yuv420p", "-b:v", "400k",
+           "-c:a", "libopus", str(odd_webm))
+    add(odd_webm.name, "matroska", ["vp9", "opus"], (161, 91))
+
     mkv = OUT / "mkv-h264-aac.mkv"
     ffmpeg("-i", str(standard), "-map", "0", "-c", "copy", str(mkv))
     add(mkv.name, "matroska", ["h264", "aac"], (160, 90))
