@@ -289,7 +289,8 @@ export function VideoWorkspace() {
       <header className="app-header">
         <a className="brand" href="/" aria-label="Any-Convert home"><BrandMark/><span>any<span className="brand-divider">/</span>convert</span></a>
         <nav className="top-nav" aria-label="Main navigation">
-          <a className="nav-active" href="#workspace">Converter</a>
+          <a className="nav-active" href="#workspace">On-device</a>
+          {process.env.NEXT_PUBLIC_ENABLE_NATIVE === "true" && <a href="/native">Native engine</a>}
           <a href="#privacy">Privacy</a>
           <a href="https://github.com/dovvnloading/Any-Convert" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
         </nav>
