@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FORMATS, MAX_LOCAL_BYTES, MediaCapabilityError, explainConversionPlanFailure, explainMediaError, getFormat, safeOutputName, validFormats, validProgress } from "./converter-contract";
+import { FORMATS, MAX_LOCAL_BYTES, MediaCapabilityError, explainConversionPlanFailure, explainMediaError, getFormat, planVideoOutputGeometry, safeOutputName, validFormats, validProgress } from "./converter-contract";
 import type { MediaInfo } from "./converter-contract";
 
 const sample: MediaInfo = {
@@ -67,6 +67,17 @@ describe("conversion plans", () => {
     expect(explainConversionPlanFailure("mp4", [
       { track: "video", reason: "undecodable_source_codec", codec: "/private/file/secret" },
     ])).not.toContain("secret");
+  });
+  it("pads odd screen-capture dimensions for H.264 without cropping the source", () => {
+    expect(planVideoOutputGeometry(161, 91, "original", "mp4"))
+      .toEqual({ width: 162, height: 92, fit: "contain" });
+    expect(planVideoOutputGeometry(853, 480, "original", "mov"))
+      .toEqual({ width: 854, height: 480, fit: "contain" });
+    expect(planVideoOutputGeometry(1920, 1080, "720", "mp4")).toEqual({ height: 720 });
+    expect(planVideoOutputGeometry(1920, 1080, "original", "mp4")).toEqual({});
+    expect(planVideoOutputGeometry(161, 91, "original", "webm")).toEqual({});
+    expect(planVideoOutputGeometry(161, 91, "original", "mp3")).toEqual({});
+    expect(planVideoOutputGeometry(0, 91, "original", "mp4")).toEqual({});
   });
   it("does not leak internal exception text", () => {
     expect(explainMediaError(new Error("Codec cannot decode secret/test.mp4"))).not.toContain("secret");

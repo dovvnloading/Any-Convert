@@ -111,6 +111,37 @@ export function validProgress(n: number): number | null {
  * identifiers. Ordinary library exceptions must never be forwarded verbatim
  * because they may contain local filenames or browser internals.
  */
+/**
+ * H.264 4:2:0 encoding typically needs even output dimensions. WebM screen
+ * recordings can have odd dimensions. Pad by at most one pixel per axis and
+ * contain the whole frame so no image content is cropped or stretched.
+ *
+ * Leave even-sized files untouched to preserve Mediabunny's stream-copy path.
+ */
+export function planVideoOutputGeometry(
+  sourceWidth: number,
+  sourceHeight: number,
+  maxHeight: HeightLimit,
+  format: FormatId,
+): { width?: number; height?: number; fit?: "contain" } {
+  if (!Number.isSafeInteger(sourceWidth) || !Number.isSafeInteger(sourceHeight) ||
+      sourceWidth < 1 || sourceHeight < 1 || isAudioFormat(format)) return {};
+
+  const height = maxHeight === "original"
+    ? sourceHeight : Math.min(sourceHeight, Number(maxHeight));
+  const width = height === sourceHeight
+    ? sourceWidth : Math.max(1, Math.round(sourceWidth * height / sourceHeight));
+
+  if ((format === "mp4" || format === "mov") && (width % 2 !== 0 || height % 2 !== 0)) {
+    return {
+      width: width + (width % 2),
+      height: height + (height % 2),
+      fit: "contain",
+    };
+  }
+  return height < sourceHeight ? { height } : {};
+}
+
 export class MediaCapabilityError extends Error {
   constructor(message: string) {
     super(message);

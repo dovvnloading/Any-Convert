@@ -41,6 +41,54 @@ test("video is inspected, remuxed to MOV, verified and downloaded", async ({ pag
   await inspectDownload(await downloadPromise, "h264", "aac");
 });
 
+test("VP9 and Opus WebM becomes a verified H.264 and AAC MP4, without upload", async ({ page }) => {
+  const uploads: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" || request.method() === "PUT") uploads.push(request.url());
+  });
+  await page.goto("/");
+  await page.locator('input[type="file"]').setInputFiles(join(fixtureRoot, "webm-vp9-opus.webm"));
+  await expect(page.getByText(/Video: VP9/)).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(/Audio: OPUS/)).toBeVisible();
+  const convert = page.getByRole("button", { name: "Convert MP4" });
+  await expect(convert).toBeEnabled({ timeout: 60_000 });
+  await convert.click();
+  const downloadLink = page.getByRole("link", { name: /Download.*webm-vp9-opus-converted\.mp4/i });
+  await expect(downloadLink).toBeVisible({ timeout: 120_000 });
+  const downloadPromise = page.waitForEvent("download");
+  await downloadLink.click();
+  await inspectDownload(await downloadPromise, "h264", "aac");
+  expect(uploads).toEqual([]);
+});
+
+test("odd-size VP9 Opus WebM exports valid even-sized H.264 and AAC", async ({ page }) => {
+  await page.goto("/");
+  await page.locator('input[type="file"]').setInputFiles(join(fixtureRoot, "odd-vp9-opus.webm"));
+  const convert = page.getByRole("button", { name: "Convert MP4" });
+  await expect(convert).toBeEnabled({ timeout: 60_000 });
+  await convert.click();
+  const link = page.getByRole("link", { name: /Download.*odd-vp9-opus-converted\.mp4/i });
+  await expect(link).toBeVisible({ timeout: 120_000 });
+  const downloadEvent = page.waitForEvent("download");
+  await link.click();
+  const download = await downloadEvent;
+  const temp = await mkdtemp(join(tmpdir(), "any-convert-odd-webm-"));
+  try {
+    const output = join(temp, "odd.webm-converted.mp4");
+    await download.saveAs(output);
+    const probe = JSON.parse(execFileSync("ffprobe", [
+      "-v", "error", "-show_entries", "stream=codec_name,codec_type,width,height",
+      "-of", "json", output,
+    ], { encoding: "utf8" }));
+    const video = probe.streams.find((s: { codec_type: string }) => s.codec_type === "video");
+    const audio = probe.streams.find((s: { codec_type: string }) => s.codec_type === "audio");
+    expect(video).toMatchObject({ codec_name: "h264", width: 162, height: 92 });
+    expect(audio).toMatchObject({ codec_name: "aac" });
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
 test("video with AC-3 audio can be exported without sound, with actual codec verification", async ({ page }) => {
   const uploads: string[] = [];
   page.on("request", (request) => {
