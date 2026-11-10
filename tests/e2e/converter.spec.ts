@@ -41,6 +41,26 @@ test("video is inspected, remuxed to MOV, verified and downloaded", async ({ pag
   await inspectDownload(await downloadPromise, "h264", "aac");
 });
 
+test("VP9 and Opus WebM becomes a verified H.264 and AAC MP4, without upload", async ({ page }) => {
+  const uploads: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" || request.method() === "PUT") uploads.push(request.url());
+  });
+  await page.goto("/");
+  await page.locator('input[type="file"]').setInputFiles(join(fixtureRoot, "webm-vp9-opus.webm"));
+  await expect(page.getByText(/Video: VP9/)).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(/Audio: OPUS/)).toBeVisible();
+  const convert = page.getByRole("button", { name: "Convert MP4" });
+  await expect(convert).toBeEnabled({ timeout: 60_000 });
+  await convert.click();
+  const downloadLink = page.getByRole("link", { name: /Download.*webm-vp9-opus-converted\\.mp4/i });
+  await expect(downloadLink).toBeVisible({ timeout: 120_000 });
+  const downloadPromise = page.waitForEvent("download");
+  await downloadLink.click();
+  await inspectDownload(await downloadPromise, "h264", "aac");
+  expect(uploads).toEqual([]);
+});
+
 test("video with AC-3 audio can be exported without sound, with actual codec verification", async ({ page }) => {
   const uploads: string[] = [];
   page.on("request", (request) => {
