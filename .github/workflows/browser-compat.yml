@@ -1,0 +1,70 @@
+name: Browser compatibility smoke tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compatibility:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Firefox on Linux
+            os: ubuntu-24.04
+            browser: firefox
+          - label: Chromium with emulated Android
+            os: ubuntu-24.04
+            browser: chromium
+          - label: WebKit desktop and emulated iPhone on macOS
+            os: macos-15
+            browser: webkit
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.9
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build browser app
+        run: pnpm build
+      - name: Install the browser engine
+        env:
+          COMPAT_BROWSER: ${{ matrix.browser }}
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            pnpm exec playwright install --with-deps "$COMPAT_BROWSER"
+          else
+            pnpm exec playwright install "$COMPAT_BROWSER"
+          fi
+      - name: Run compatibility smoke tests
+        env:
+          CI: "true"
+          COMPAT_BROWSER: ${{ matrix.browser }}
+        run: pnpm exec playwright test -c playwright.compat.config.ts
+      - name: Upload Playwright report and failure traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-compat-${{ matrix.browser }}
+          path: |
+            playwright-report/compat/
+            test-results/compat/
+          if-no-files-found: warn
+          retention-days: 7
