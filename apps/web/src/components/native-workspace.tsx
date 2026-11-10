@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { formatBytes } from "@/lib/media";
 import {
   NATIVE_FORMATS,
@@ -73,15 +73,15 @@ export function NativeWorkspace() {
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function clearTimer() {
+  const clearTimer = useCallback(() => {
     if (timer.current !== null) clearTimeout(timer.current);
     timer.current = null;
-  }
-  function schedulePoll(id: string, sequence: number) {
-    clearTimer();
-    timer.current = setTimeout(() => { void pollJob(id, sequence); }, 900);
-  }
-  async function pollJob(id: string, sequence: number) {
+  }, []);
+  const pollJob = useCallback(async function pollJob(id: string, sequence: number) {
+    const schedule = () => {
+      if (timer.current !== null) clearTimeout(timer.current);
+      timer.current = setTimeout(() => { void pollJob(id, sequence); }, 900);
+    };
     if (sequence !== generation.current) return;
     try {
       const next = await getNativeJob(id);
@@ -96,18 +96,18 @@ export function NativeWorkspace() {
         setError(next.error || "The conversion did not finish.");
       } else {
         setState("running");
-        schedulePoll(id, sequence);
+        schedule();
       }
     } catch (reason) {
       if (sequence !== generation.current) return;
       retries.current += 1;
-      if (retries.current <= 3) schedulePoll(id, sequence);
+      if (retries.current <= 3) schedule();
       else {
         setState("failed");
         setError(sanitizeError(reason));
       }
     }
-  }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -130,7 +130,7 @@ export function NativeWorkspace() {
       clearTimer();
       uploadController.current?.abort();
     };
-  }, []);
+  }, [clearTimer, pollJob]);
 
   const working = state === "uploading" || state === "running";
   const finished = state === "ready" && job?.state === "ready";
@@ -142,7 +142,6 @@ export function NativeWorkspace() {
   const outputKind = NATIVE_FORMATS.find((item) => item.id === format)?.kind;
   const progress = state === "uploading" ? uploadProgress : job?.state === "processing" ? job.progress : null;
   const canStart = Boolean(source && health && consent && !working && !finished);
-  const canDownload = finished && job;
 
   function choose() {
     if (working || !picker.current) return;
@@ -197,7 +196,8 @@ export function NativeWorkspace() {
       if (sequence !== generation.current) return;
       setJob(started);
       setState("running");
-      schedulePoll(id, sequence);
+      clearTimer();
+      timer.current = setTimeout(() => { void pollJob(id, sequence); }, 900);
     } catch (reason) {
       if (sequence !== generation.current) return;
       setState("failed");
