@@ -124,16 +124,26 @@ test("batch import stays usable on this viewport, and clipboard does not upload"
 
   // Real clipboard file availability differs by OS. This checks the application's
   // file-bearing paste event and its DOM listener, not the native clipboard UI.
-  const pasted = await page.evaluate((bytes) => {
+  const paste = await page.evaluate((bytes) => {
     const clipboard = new DataTransfer();
     clipboard.items.add(new File([new Uint8Array(bytes)], "compatibility.wav", { type: "audio/wav" }));
-    const event = new ClipboardEvent("paste", {
+    const nativeEvent = new ClipboardEvent("paste", {
       bubbles: true, cancelable: true, clipboardData: clipboard,
     });
+    // Firefox deliberately drops a DataTransfer supplied to a synthetic
+    // ClipboardEvent. If so, inject a file-bearing test event to exercise
+    // our paste listener, but *do not* claim native OS paste was verified.
+    const event = nativeEvent.clipboardData?.files.length
+      ? nativeEvent
+      : new Event("paste", { bubbles: true, cancelable: true });
+    if (event !== nativeEvent) {
+      Object.defineProperty(event, "clipboardData", { value: clipboard });
+    }
     document.dispatchEvent(event);
-    return event.defaultPrevented;
+    return { handled: event.defaultPrevented, nativeSyntheticFiles: nativeEvent.clipboardData?.files.length ?? 0 };
   }, [...sample]);
-  expect(pasted, "Media paste should be claimed by the batch workspace").toBe(true);
+  console.log("BROWSER_PASTE_EVENT " + JSON.stringify({ project: testInfo.project.name, ...paste }));
+  expect(paste.handled, "Media paste should be claimed by the batch workspace").toBe(true);
   await expect(page.locator(".batch-asset")).toHaveCount(1);
   const chip = page.locator(".batch-asset .batch-chip");
   await expect(chip).toHaveText(/Inspected|Unsupported/, { timeout: 60_000 });
