@@ -1,0 +1,76 @@
+name: any-convert
+services:
+  web:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.web
+      args:
+        NEXT_PUBLIC_ENABLE_NATIVE: "true"
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+    expose:
+      - "3000"
+    networks:
+      - internal
+
+  native:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.native
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: "0.0.0.0"
+      PORT: "4300"
+      MEDIA_DIR: "/data"
+      PUBLIC_ORIGIN: "${PUBLIC_ORIGIN:-http://localhost:8080}"
+      MAX_UPLOAD_MB: "${MAX_UPLOAD_MB:-512}"
+      MAX_OUTPUT_MB: "${MAX_OUTPUT_MB:-1024}"
+      MAX_DURATION_SECONDS: "${MAX_DURATION_SECONDS:-600}"
+      MAX_ACTIVE_JOBS: "${MAX_ACTIVE_JOBS:-1}"
+      ENCODE_TIMEOUT_MS: "${ENCODE_TIMEOUT_MS:-900000}"
+      JOB_TTL_MS: "${JOB_TTL_MS:-3600000}"
+    read_only: true
+    tmpfs:
+      - /data:rw,nosuid,noexec,size=2048m,uid=1000,gid=1000
+      - /tmp:rw,nosuid,noexec,size=64m,uid=1000,gid=1000
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 128
+    mem_limit: 3g
+    cpus: 2.0
+    expose:
+      - "4300"
+    networks:
+      - internal
+
+  edge:
+    image: caddy:2.10
+    restart: unless-stopped
+    depends_on:
+      - web
+      - native
+    environment:
+      SITE_ADDRESS: "${SITE_ADDRESS:-:8080}"
+    ports:
+      - "${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:${CONTAINER_HTTP_PORT:-8080}"
+      - "${HTTPS_BIND:-127.0.0.1}:${HTTPS_PORT:-8443}:443"
+    volumes:
+      - ./infra/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - public
+      - internal
+
+networks:
+  internal:
+    internal: true
+  public: {}
+
+volumes:
+  caddy_data: {}
+  caddy_config: {}

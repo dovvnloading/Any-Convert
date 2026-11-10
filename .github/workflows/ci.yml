@@ -40,9 +40,62 @@ jobs:
       - name: Unit tests
         run: pnpm test
       - name: Build web
+        env:
+          NEXT_PUBLIC_ENABLE_NATIVE: "true"
+          NATIVE_INTERNAL_URL: "http://127.0.0.1:4300"
         run: pnpm build
       - name: Generate test media
         run: python3 tools/media/generate_fixtures.py
+      - name: Native API, isolation and FFmpeg integration
+        run: pnpm test:native
+      - name: Validate Docker Compose configuration
+        run: docker compose --env-file .env.example config --quiet
+      - name: Build self-hosted Docker images
+        run: docker compose --env-file .env.example build
+      - name: Smoke test self-hosted Caddy gateway
+        run: |
+          docker compose --env-file .env.example up -d --no-build
+          for i in $(seq 1 40); do
+            if curl --fail --silent http://127.0.0.1:8080/api/native/health > /tmp/any-convert-health.json; then
+              break
+            fi
+            sleep 2
+          done
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const health = JSON.parse(readFileSync("/tmp/any-convert-health.json", "utf8"));
+            if (health.engine !== "native-ffmpeg" || !health.formats.includes("gif")) process.exit(1);
+          '
+          ready=0
+          for i in $(seq 1 40); do
+            if curl --fail --silent --output /tmp/any-convert-page.html http://127.0.0.1:8080/native; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" != "1" ]; then
+            echo "The web route did not become ready behind Caddy"
+            docker compose --env-file .env.example ps
+            docker compose --env-file .env.example logs --tail=120 web edge native
+            exit 1
+          fi
+          grep -q "Built to be" /tmp/any-convert-page.html
+      - name: Stop self-hosted containers
+        if: always()
+        run: docker compose --env-file .env.example down --remove-orphans
+      - name: Start native service for browser tests
+        run: |
+          mkdir -p "$RUNNER_TEMP/any-convert-native"
+          HOST=127.0.0.1 PORT=4300 PUBLIC_ORIGIN=http://127.0.0.1:3000 MEDIA_DIR="$RUNNER_TEMP/any-convert-native" nohup node apps/native-service/src/server.mjs > "$RUNNER_TEMP/any-convert-native.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/any-convert-native.pid"
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4300/api/native/health > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          echo "Native service failed to start"
+          cat "$RUNNER_TEMP/any-convert-native.log"
+          exit 1
       - name: Install Chromium for browser integration tests
         run: pnpm exec playwright install --with-deps chromium
       - name: Real conversion browser journey
@@ -51,5 +104,11 @@ jobs:
         env:
           ANY_CONVERT_REQUIRE_WORKER: "1"
         run: pnpm test:media
+      - name: Stop browser-test native service
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/any-convert-native.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/any-convert-native.pid")" || true
+          fi
       - name: Dependency audit
         run: pnpm audit --audit-level high

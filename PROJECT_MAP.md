@@ -59,6 +59,14 @@
 
 ## Execution map
 
+**2026-11-09 Native Engine vertical slice:** a self-hostable FFmpeg API,
+Docker Compose/Caddy stack and consent-first browser workspace are being
+implemented under [PR #4](https://github.com/dovvnloading/Any-Convert/pull/4).
+This is a single-node, ephemeral **private/self-hosted beta**, not a durable
+or horizontally scaled cloud service. Existing on-device conversion remains
+the public default. Background-removal ML remains blocked on code+weights
+licensing, alpha export interoperability and objective video benchmarks.
+
 **Usable local converter release (2026-11-09):** The web workspace now supports real
 browser-side MP4/WebM/MOV conversion and MP3/WAV/FLAC audio extraction, with
 format selection, quality/resolution options, measured progress, cancellation,
