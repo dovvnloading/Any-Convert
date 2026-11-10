@@ -337,9 +337,16 @@ export async function createNativeServer(options = {}) {
         const file = await stat(job.output);
         const spec = FORMATS[job.recipe.format];
         const name = safeName(job.filename.replace(/\.[^.]+$/, "")) + "-converted." + spec.extension;
+        // An ASCII fallback prevents invalid HTTP headers for Unicode names.
+        // filename* carries the full UTF-8 filename without a query token.
+        const ascii = Array.from(name, (character) => {
+          const point = character.codePointAt(0) ?? 0;
+          return point < 32 || point > 126 ? "_" : character;
+        }).join("");
+        const disposition = "attachment; filename=" + JSON.stringify(ascii) + "; filename*=UTF-8\'\'" + encodeURIComponent(name);
         res.writeHead(200, {
           "Content-Type": spec.mime, "Content-Length": file.size,
-          "Content-Disposition": "attachment; filename=" + JSON.stringify(name),
+          "Content-Disposition": disposition,
           "Cache-Control": "private, no-store",
           "X-Content-Type-Options": "nosniff",
           "Content-Security-Policy": "default-src 'none'",
@@ -356,6 +363,10 @@ export async function createNativeServer(options = {}) {
       }
     }
   });
+
+  // Size-limited jobs can be uploaded slowly; do not silently hang forever.
+  server.requestTimeout = 15 * 60 * 1000;
+  server.headersTimeout = 60 * 1000;
 
   const interval = setInterval(() => {
     const now = Date.now();
