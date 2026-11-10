@@ -59,6 +59,15 @@
 
 ## Execution map
 
+**Usable local converter release (2026-11-09):** The web workspace now supports real
+browser-side MP4/WebM/MOV conversion and MP3/WAV/FLAC audio extraction, with
+format selection, quality/resolution options, measured progress, cancellation,
+output inspection, download, and 256 MB input cap. Chromium E2E tests confirm
+MP4→MOV and WAV→MP3 outputs by ffprobe. A Vercel deployment was built and
+reported READY. This is a **local-first vertical slice**, not completion of
+P0 cloud jobs, broad codec compatibility, model matting, or cross-browser
+evaluation. See [local release guide](docs/LOCAL_CONVERTER.md).
+
 These are ordered work packages, not calendar promises. No phase is considered complete because a UI demo happens to look convincing.
 
 ### Phase 0 — Foundations and proof (M0)
