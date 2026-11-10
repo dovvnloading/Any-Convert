@@ -32,6 +32,11 @@ Use `COMPAT_BROWSER=firefox`, `chromium` or `webkit` to select an engine.
 The existing `pnpm test:browser` command intentionally remains the
 Chromium real-codec/FFprobe suite.
 
+For clipboard coverage, Firefox may omit the constructor-supplied FileList on a
+synthetic `ClipboardEvent`. The test therefore supplies an explicit FileList to
+a synthetic `paste` Event as a fallback, exercising the app's paste handler,
+**not** claiming that native operating-system copy/paste has been verified.
+
 **Limitations:** Playwright's patched Firefox/WebKit browser builds are not
 identical to shipped branded browsers. Media codecs, GPU acceleration, browser
 storage quotas, OS clipboard file exposure and memory pressure vary by device.
