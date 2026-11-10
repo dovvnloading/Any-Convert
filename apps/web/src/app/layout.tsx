@@ -9,8 +9,7 @@ const displayFont = Manrope({ subsets: ["latin"], display: "swap", variable: "--
 
 export const metadata: Metadata = {
   title: "Any-Convert — Video, handled beautifully",
-  description: "A considered home for video conversion and transformation.",
-  robots: { index: false, follow: false }, // M0: preview milestone, not a production converter
+  description: "Convert videos to MP4, WebM, and MOV or extract audio as MP3, WAV, and FLAC — directly on your device.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

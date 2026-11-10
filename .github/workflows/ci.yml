@@ -47,6 +47,8 @@ jobs:
         run: pnpm test
       - name: Build web
         run: pnpm build
+      - name: Generate test media
+        run: python3 tools/media/generate_fixtures.py
       - name: Install Chromium for browser integration tests
         run: pnpm exec playwright install --with-deps chromium
       - name: Real conversion browser journey
