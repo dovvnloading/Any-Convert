@@ -75,6 +75,10 @@ export function validProgress(n: number): number | null {
 export function explainMediaError(error: unknown): string {
   const raw = error instanceof Error ? error.message : String(error);
   const msg = raw.toLowerCase();
+  if (msg.includes("unreadable") || msg.includes("cannot read") || msg.includes("invalid") ||
+      msg.includes("format") || msg.includes("malformed")) {
+    return "We couldn't read this media file. It may be damaged or use a format not supported by the local engine.";
+  }
   if (msg.includes("no encodable") || msg.includes("not supported") || msg.includes("unsupported") ||
       msg.includes("cannot decode") || msg.includes("undecodable") || msg.includes("codec") ||
       msg.includes("not implemented")) {
@@ -85,9 +89,5 @@ export function explainMediaError(error: unknown): string {
   }
   if (msg.includes("no audio")) return "This file doesn't contain an audio track to extract.";
   if (msg.includes("no video")) return "This file doesn't contain a video track.";
-  if (msg.includes("unreadable") || msg.includes("cannot read") || msg.includes("invalid") ||
-      msg.includes("format") || msg.includes("malformed")) {
-    return "We couldn't read this media file. It may be damaged or use a format not supported by the local engine.";
-  }
   return "Conversion didn't finish. Your original file is unchanged. Try again or choose another format.";
 }

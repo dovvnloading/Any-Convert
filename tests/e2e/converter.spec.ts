@@ -56,7 +56,7 @@ test("invalid input is rejected without showing a false success", async ({ page 
     mimeType: "video/mp4",
     buffer: Buffer.from("this-is-not-a-media-container"),
   });
-  await expect(page.getByRole("alert")).toContainText(/couldn't read|format not supported/i, { timeout: 60_000 });
+  await expect(page.locator(".error-message")).toContainText(/couldn.t complete/i, { timeout: 60_000 });
   await expect(page.getByRole("link", { name: /Download.*MP4/i })).toHaveCount(0);
 });
 
