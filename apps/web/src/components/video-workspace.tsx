@@ -98,7 +98,6 @@ export function VideoWorkspace() {
   const isAudio = isAudioFormat(format);
   const showingResult = Boolean(stage === "done" && result && previewResult);
   const currentPreview = showingResult && result ? result.url : source?.url;
-  const previewMime = showingResult && result ? result.mime : source?.file.type;
   const hasPreviewVideo = Boolean(showingResult ? result && !isAudioFormat(result.preset) : info?.hasVideo);
   const hasPreviewAudio = Boolean(showingResult ? result && isAudioFormat(result.preset) : info?.hasAudio && !info.hasVideo);
 
@@ -359,12 +358,17 @@ export function VideoWorkspace() {
                 <p>Video, audio, and everything in between.</p>
                 <button type="button" className="light-button" onClick={openPicker}>Choose a file <Icon name="arrow"/></button>
                 <span className="stage-subline">UP TO 256 MB <span className="subline-divider"/> STAYS ON YOUR DEVICE</span>
+                {error && !source && <div className="stage-error" role="alert">{error}</div>}
               </div>
             ) : (
               <div className="loaded-stage">
                 <div className="stage-file-row">
                   <span className="stage-file-status"><span className="status-dot"/> {showingResult ? "OUTPUT PREVIEW" : "INPUT PREVIEW"}</span>
-                  <span className="stage-file-size">{formatBytes(showingResult && result ? result.bytes : source.file.size)}</span>
+                  <div className="stage-file-actions">
+                    <span className="stage-file-size">{formatBytes(showingResult && result ? result.bytes : source.file.size)}</span>
+                    <button type="button" onClick={openPicker} disabled={busy}>Replace</button>
+                    <button type="button" onClick={clearFile} disabled={processing} aria-label="Remove selected media">Remove</button>
+                  </div>
                 </div>
                 <div className="preview-body">
                   {currentPreview && hasPreviewVideo && !previewError ? (
