@@ -61,6 +61,19 @@ test("VP9 and Opus WebM becomes a verified H.264 and AAC MP4, without upload", a
   expect(uploads).toEqual([]);
 });
 
+test("odd-size VP9 Opus WebM converts to MP4 with correctly encoded video and audio", async ({ page }) => {
+  await page.goto("/");
+  await page.locator('input[type="file"]').setInputFiles(join(fixtureRoot, "odd-vp9-opus.webm"));
+  const convert = page.getByRole("button", { name: "Convert MP4" });
+  await expect(convert).toBeEnabled({ timeout: 60_000 });
+  await convert.click();
+  const link = page.getByRole("link", { name: /Download.*odd-vp9-opus-converted\.mp4/i });
+  await expect(link).toBeVisible({ timeout: 120_000 });
+  const download = page.waitForEvent("download");
+  await link.click();
+  await inspectDownload(await download, "h264", "aac");
+});
+
 test("video with AC-3 audio can be exported without sound, with actual codec verification", async ({ page }) => {
   const uploads: string[] = [];
   page.on("request", (request) => {
