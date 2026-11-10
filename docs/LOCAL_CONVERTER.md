@@ -63,8 +63,11 @@ the tab stops ongoing conversion.
 - Each job has an operation sequence ID, with stale worker messages
   ignored and worker termination on cancellation or replacement.
 - Conversion.init validates track capabilities and no source-audio loss
-  before execution. The downloaded output is probed again before
-  the UI marks it ready.
+  before execution. When its track plan is invalid, the UI explains whether
+  an input codec cannot be decoded, an output codec cannot be encoded, or a
+  track cannot be copied, without leaking raw exception strings or filenames.
+  Source video/audio codec labels are visible in the workspace for diagnosis.
+  The downloaded output is probed again before the UI marks it ready.
 - StreamTarget writes verified output to origin-private storage where supported.
   BufferTarget remains a bounded fallback for older browsers.
 - The original native FFmpeg CLI is for trusted local files only.
