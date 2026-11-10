@@ -470,7 +470,8 @@ export function VideoWorkspace() {
                     <span>{formatBytes(source.file.size)}</span>
                     <span>{info.width && info.height ? [info.width, info.height].join(" × ") : "Audio"}</span>
                     <span>{info.duration ? formatDuration(info.duration) : "Duration unknown"}</span>
-                    {info.videoCodec && <span>{formatCodec(info.videoCodec)}</span>}
+                    {info.videoCodec && <span>Video: {formatCodec(info.videoCodec)}</span>}
+                    {info.audioCodec && <span>Audio: {formatCodec(info.audioCodec)}</span>}
                   </div>
                 </div>
                 <fieldset className="format-fieldset" disabled={busy}>
