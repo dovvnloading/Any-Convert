@@ -104,7 +104,68 @@ export function validProgress(n: number): number | null {
   return Number.isFinite(n) && n >= 0 && n <= 1 ? Math.min(99, Math.round(n * 100)) : null;
 }
 
+/**
+ * A message assembled only from known conversion status codes and probed codec
+ * identifiers. Ordinary library exceptions must never be forwarded verbatim
+ * because they may contain local filenames or browser internals.
+ */
+export class MediaCapabilityError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MediaCapabilityError";
+  }
+}
+
+export type ConversionTrackIssue = {
+  track: "video" | "audio";
+  reason: string;
+  codec: string | null;
+};
+
+function codecLabel(value: string | null): string {
+  if (!value || !/^[a-z0-9._-]{1,24}$/i.test(value)) return "unknown-codec";
+  const normalized = value.toLowerCase();
+  switch (normalized) {
+    case "avc": return "H.264/AVC";
+    case "hevc": return "H.265/HEVC";
+    case "vp8": return "VP8";
+    case "vp9": return "VP9";
+    case "av1": return "AV1";
+    case "aac": return "AAC";
+    case "opus": return "Opus";
+    case "mp3": return "MP3";
+    case "flac": return "FLAC";
+    default: return normalized.toUpperCase();
+  }
+}
+
+/** Explain MediaBunny's discarded-track reasons without leaking raw exceptions. */
+export function explainConversionPlanFailure(
+  preset: FormatId,
+  issues: readonly ConversionTrackIssue[],
+): string {
+  const relevant = issues.filter((issue) => issue.reason !== "discarded_by_user");
+  const undecodable = relevant.find((issue) => issue.reason === "undecodable_source_codec");
+  if (undecodable) {
+    return `This browser cannot decode the input's ${codecLabel(undecodable.codec)} ${undecodable.track} track. Changing the output format will not add a missing decoder. Try a browser with codec support or the separately self-hosted Native Engine.`;
+  }
+  const unknown = relevant.find((issue) => issue.reason === "unknown_source_codec");
+  if (unknown) {
+    return `The input's ${unknown.track} codec is unknown to the browser converter. Try a compatible source or the separately self-hosted Native Engine.`;
+  }
+  const encoder = relevant.find((issue) => issue.reason === "no_encodable_target_codec");
+  if (encoder) {
+    return `This browser cannot encode the ${encoder.track} track required for ${preset.toUpperCase()}. Try another eligible output format or the separately self-hosted Native Engine.`;
+  }
+  const copy = relevant.find((issue) => issue.reason === "cannot_copy");
+  if (copy) {
+    return `The input's ${copy.track} track cannot be copied into ${preset.toUpperCase()} with these settings. Try another output format or quality setting.`;
+  }
+  return `This browser cannot build a valid ${preset.toUpperCase()} conversion with the source tracks. Try another eligible output format or the separately self-hosted Native Engine.`;
+}
+
 export function explainMediaError(error: unknown): string {
+  if (error instanceof MediaCapabilityError) return error.message;
   const raw = error instanceof Error ? error.message : String(error);
   const msg = raw.toLowerCase();
   if (msg.includes("unreadable") || msg.includes("cannot read") || msg.includes("invalid") ||
