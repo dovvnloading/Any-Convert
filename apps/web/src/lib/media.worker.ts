@@ -26,6 +26,7 @@ import {
   isAudioFormat,
   MAX_LOCAL_BYTES,
   MAX_STREAMING_BYTES,
+  planVideoOutputGeometry,
 } from "./converter-contract";
 import type {
   ConvertRequest, FormatId, MediaInfo, WorkerRequest, WorkerResponse,
@@ -176,9 +177,12 @@ async function convert(request: ConvertRequest): Promise<void> {
     const output = new Output({ format, target });
   const quality = request.quality === "source" ? undefined
     : new Quality(request.quality === "compact" ? "medium" : "high");
-  const resize = !audioOnly && sourceVideo && request.height !== "original"
-    ? Math.min(await sourceVideo.getDisplayHeight(), Number(request.height))
-    : null;
+  const videoGeometry = !audioOnly && sourceVideo
+    ? planVideoOutputGeometry(
+        await sourceVideo.getDisplayWidth(), await sourceVideo.getDisplayHeight(),
+        request.height, request.preset,
+      )
+    : {};
 
   const conversion = await Conversion.init({
     input, output,
@@ -188,7 +192,7 @@ async function convert(request: ConvertRequest): Promise<void> {
       : {
           codec: request.preset === "webm" ? "vp9" : "avc",
           ...(quality ? { quality } : {}),
-          ...(resize ? { height: resize } : {}),
+          ...videoGeometry,
         },
     audio: sourceAudio && !withoutAudio
       ? {
