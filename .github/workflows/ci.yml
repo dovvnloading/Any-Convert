@@ -52,6 +52,25 @@ jobs:
         run: docker compose --env-file .env.example config --quiet
       - name: Build self-hosted Docker images
         run: docker compose --env-file .env.example build
+      - name: Smoke test self-hosted Caddy gateway
+        run: |
+          docker compose --env-file .env.example up -d --no-build
+          for i in $(seq 1 40); do
+            if curl --fail --silent http://127.0.0.1:8080/api/native/health > /tmp/any-convert-health.json; then
+              break
+            fi
+            sleep 2
+          done
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const health = JSON.parse(readFileSync("/tmp/any-convert-health.json", "utf8"));
+            if (health.engine !== "native-ffmpeg" || !health.formats.includes("gif")) process.exit(1);
+          '
+          curl --fail --silent --output /tmp/any-convert-page.html http://127.0.0.1:8080/native
+          grep -q "Built to be" /tmp/any-convert-page.html
+      - name: Stop self-hosted containers
+        if: always()
+        run: docker compose --env-file .env.example down --remove-orphans
       - name: Start native service for browser tests
         run: |
           mkdir -p "$RUNNER_TEMP/any-convert-native"
