@@ -53,7 +53,7 @@ test("VP9 and Opus WebM becomes a verified H.264 and AAC MP4, without upload", a
   const convert = page.getByRole("button", { name: "Convert MP4" });
   await expect(convert).toBeEnabled({ timeout: 60_000 });
   await convert.click();
-  const downloadLink = page.getByRole("link", { name: /Download.*webm-vp9-opus-converted\\.mp4/i });
+  const downloadLink = page.getByRole("link", { name: /Download.*webm-vp9-opus-converted\.mp4/i });
   await expect(downloadLink).toBeVisible({ timeout: 120_000 });
   const downloadPromise = page.waitForEvent("download");
   await downloadLink.click();
