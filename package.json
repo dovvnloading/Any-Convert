@@ -17,7 +17,9 @@
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm test:media",
     "format:check": "biome format .",
     "format": "biome format --write .",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "test:native": "pnpm --filter @any-convert/native-service test",
+    "test:all": "pnpm test && pnpm test:native && pnpm test:media && pnpm test:browser"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.5",

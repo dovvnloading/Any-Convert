@@ -43,6 +43,10 @@ jobs:
         run: pnpm build
       - name: Generate test media
         run: python3 tools/media/generate_fixtures.py
+      - name: Native API, isolation and FFmpeg integration
+        run: pnpm test:native
+      - name: Validate Docker Compose configuration
+        run: docker compose --env-file .env.example config --quiet
       - name: Install Chromium for browser integration tests
         run: pnpm exec playwright install --with-deps chromium
       - name: Real conversion browser journey
