@@ -62,7 +62,8 @@ export function validFormats(info: MediaInfo): FormatId[] {
 
 export function safeOutputName(source: string, format: FormatId): string {
   const stem = source.replace(/\.[^./\\]+$/, "").trim()
-    .replace(/[/\\<>:"|?*\u0000-\u001F]/g, "-")
+    .replace(/[/\\<>:"|?*]/g, "-")
+    .split("").map((character) => character.charCodeAt(0) < 32 ? "-" : character).join("")
     .replace(/\s+/g, " ").slice(0, 100) || "converted-video";
   return [stem, "-converted.", format].join("");
 }

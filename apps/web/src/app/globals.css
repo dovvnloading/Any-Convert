@@ -249,3 +249,8 @@ legend { padding: 0; }
 }
 
 .stage-error { max-width: 310px; margin-top: 15px; padding: 10px 12px; border: 1px solid #ad6961; background: #3a2422; color: #ffded9; font-size: 11px; line-height: 1.5; }
+
+.progress-line { appearance: none; -webkit-appearance: none; border: 0; display: block; }
+.progress-line::-webkit-progress-bar { background: #394e3d; border-radius: 4px; }
+.progress-line::-webkit-progress-value { background: var(--accent); border-radius: 4px; }
+.progress-line::-moz-progress-bar { background: var(--accent); border-radius: 4px; }

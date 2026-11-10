@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Any-Convert</title>
   <rect width="64" height="64" rx="16" fill="#17231d"/>
   <rect x="13" y="13" width="38" height="38" rx="9" fill="none" stroke="#daf18b" stroke-width="2"/>
   <path d="M23 15v34m18-34v34M23 24h18M23 40h18" fill="none" stroke="#daf18b" stroke-width="2"/>

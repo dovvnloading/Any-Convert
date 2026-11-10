@@ -384,6 +384,7 @@ export function VideoWorkspace() {
                     <div className="audio-preview">
                       <div className="audio-art" aria-hidden="true"><span>♫</span></div>
                       <p>Listen to your {showingResult ? "converted" : "original"} audio</p>
+                      {/* biome-ignore lint/a11y/useMediaCaption: user-provided audio does not include any known caption track */}
                       <audio key={currentPreview} src={currentPreview} controls onError={() => setPreviewError(true)} aria-label="Audio file preview"/>
                     </div>
                   ) : (
@@ -397,10 +398,11 @@ export function VideoWorkspace() {
                   )}
                 </div>
                 {stage === "done" && result ? (
-                  <div className="preview-switch" role="group" aria-label="Preview selection">
+                  <fieldset className="preview-switch">
+                    <legend className="sr-only">Preview selection</legend>
                     <button type="button" className={!previewResult ? "selected" : ""} onClick={() => { setPreviewResult(false); setPreviewError(false); }}>Original</button>
                     <button type="button" className={previewResult ? "selected" : ""} onClick={() => { setPreviewResult(true); setPreviewError(false); }}>Converted</button>
-                  </div>
+                  </fieldset>
                 ) : null}
                 {processing && (
                   <div className="processing-scrim">
@@ -408,13 +410,12 @@ export function VideoWorkspace() {
                       <div className="spinner" aria-hidden="true" />
                       <p>{prettyStage(stage)}</p>
                       <strong>{progressLabel ?? "Working…"}</strong>
-                      <div className="progress-line" role={progressLabel ? "progressbar" : "status"}
+                      <progress
+                        className="progress-line"
+                        max={100}
+                        value={progressLabel && progress !== null ? progress : undefined}
                         aria-label={prettyStage(stage)}
-                        aria-valuemin={progressLabel ? 0 : undefined}
-                        aria-valuemax={progressLabel ? 100 : undefined}
-                        aria-valuenow={progressLabel && progress !== null ? progress : undefined}>
-                        <span style={{ width: progressLabel ? String(progress).concat("%") : "0%" }}/>
-                      </div>
+                      />
                       <button type="button" onClick={cancelConversion} className="cancel-processing">Cancel conversion</button>
                     </div>
                   </div>
