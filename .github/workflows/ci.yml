@@ -66,7 +66,20 @@ jobs:
             const health = JSON.parse(readFileSync("/tmp/any-convert-health.json", "utf8"));
             if (health.engine !== "native-ffmpeg" || !health.formats.includes("gif")) process.exit(1);
           '
-          curl --fail --silent --output /tmp/any-convert-page.html http://127.0.0.1:8080/native
+          ready=0
+          for i in $(seq 1 40); do
+            if curl --fail --silent --output /tmp/any-convert-page.html http://127.0.0.1:8080/native; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" != "1" ]; then
+            echo "The web route did not become ready behind Caddy"
+            docker compose --env-file .env.example ps
+            docker compose --env-file .env.example logs --tail=120 web edge native
+            exit 1
+          fi
           grep -q "Built to be" /tmp/any-convert-page.html
       - name: Stop self-hosted containers
         if: always()
