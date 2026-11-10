@@ -1,0 +1,56 @@
+name: Windows Chrome WebM to MP4 regression
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-webm-mp4:
+    runs-on: windows-2025
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.9
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - name: FFmpeg and FFprobe
+        shell: pwsh
+        run: |
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+            choco install ffmpeg -y --no-progress
+          }
+          ffmpeg -hide_banner -version | Select-Object -First 1
+          ffprobe -hide_banner -version | Select-Object -First 1
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build web app
+        run: pnpm build
+      - name: Generate real media fixtures
+        run: python tools/media/generate_fixtures.py
+      - name: Install Chromium
+        run: pnpm exec playwright install chromium
+      - name: Convert VP9 Opus WebM into verified H264 AAC MP4
+        env:
+          CI: "true"
+        run: pnpm exec playwright test --grep "VP9 and Opus WebM"
+      - name: Upload failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-webm-mp4-playwright-failure
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
