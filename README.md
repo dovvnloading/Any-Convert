@@ -20,8 +20,11 @@ enable or operate the Native Engine.
 ### Browser conversions
 
 MP4 (H.264/AAC), MOV (H.264/AAC), WebM (VP9/Opus), MP3, WAV and FLAC are
-supported when the browser can decode and encode the media. The initial local
-memory safety cap is 256 MB per file; exact device/codec support varies.
+supported when the browser can decode and encode the media. A conservative 256 MB memory fallback remains when private browser storage
+is unavailable. Disk-backed exports up to 1 GB are experimental, conditional
+on device storage quota and codec support; they are not guaranteed on every
+browser. Temporary output files stay on the device and are cleaned on reset
+or a later visit. Exact browser/codec support varies.
 Actual conversion, preview, progress, cancellation and download work
 in a dedicated browser media worker. See [local guide](docs/LOCAL_CONVERTER.md).
 

@@ -5,7 +5,8 @@ gated on successful browser E2E tests and deployment verification.
 
 ## Current user journey
 
-1. Select or drag a video/audio file into the workspace, up to 256 MB.
+1. Select or drag media up to 256 MB for the fallback or up to 1 GB
+   experimentally when private browser storage and capacity are available.
 2. A dedicated Web Worker probes the real container, primary audio/video
    tracks, display dimensions, duration, codecs, and decodability.
 3. Pick MP4/WebM/MOV if video exists; MP3/WAV/FLAC if audio exists.
@@ -37,8 +38,14 @@ the tab stops ongoing conversion.
   required, instead of silently reducing quality.
 - Video exports only offer formats when a real video track exists.
 - Audio exports only offer formats when an audio track exists.
-- Input file size has a 256 MB cap for the local buffered implementation;
-  lower-memory devices may fail even below that limit.
+- The in-memory fallback has a 256 MB input cap; disk-backed exports are
+  experimental up to 1 GB, subject to storage quota and device codec support.
+- Streaming exports use a position-aware Mediabunny StreamTarget and browser
+  origin-private storage, not append-only concatenation. MP4/MOV use
+  non-faststart output to avoid buffering the entire media payload.
+- Private output is deleted when reset/replaced; a best-effort stale cleanup
+  runs on the next visit after 24 hours. Crash or abrupt tab closure can leave
+  temporary local output until cleanup or browser site data is cleared.
 - Browser support and hardware acceleration vary. No DRM circumvention.
 - No background removal, frame generation, batch, resumable upload,
   server conversion, transparent video, or persistent cloud jobs yet.
@@ -56,8 +63,8 @@ the tab stops ongoing conversion.
 - Conversion.init validates track capabilities and no source-audio loss
   before execution. The downloaded output is probed again before
   the UI marks it ready.
-- BufferTarget holds the final output in memory. This is intentional
-  for the first usable release; streaming/disk output is later work.
+- StreamTarget writes verified output to origin-private storage where supported.
+  BufferTarget remains a bounded fallback for older browsers.
 - The original native FFmpeg CLI is for trusted local files only.
   Never turn it into a public endpoint without sandboxing and quotas.
 

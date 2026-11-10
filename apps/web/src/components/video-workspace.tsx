@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   FORMATS,
   MAX_LOCAL_BYTES,
+  MAX_STREAMING_BYTES,
   getFormat,
   isAudioFormat,
   safeOutputName,
@@ -15,10 +16,11 @@ import type {
   FormatId, HeightLimit, MediaInfo, QualityId, WorkerResponse,
 } from "@/lib/converter-contract";
 import { formatBytes, formatDuration } from "@/lib/media";
+import { makeTemporaryExportKey, removeTemporaryExport, sweepStaleTemporaryExports } from "@/lib/output-storage";
 
 type Stage = "idle" | "inspecting" | "ready" | "preparing" | "converting" | "verifying" | "done" | "error";
 type Source = { file: File; url: string };
-type Result = { url: string; name: string; bytes: number; mime: string; preset: FormatId };
+type Result = { url: string; name: string; bytes: number; mime: string; preset: FormatId; storageKey?: string };
 
 function Icon({ name, size = 18 }: { name: "arrow" | "upload" | "check" | "close" | "shield" | "repeat" | "film" | "download" | "spark" | "pause"; size?: number }) {
   const common = { stroke: "currentColor", strokeWidth: 1.65, fill: "none", strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
@@ -67,6 +69,8 @@ export function VideoWorkspace() {
   const pickerRef = useRef<HTMLInputElement>(null);
   const workerRef = useRef<Worker | null>(null);
   const sourceUrlRef = useRef<string | null>(null);
+  const resultStorageRef = useRef<string | null>(null);
+  const pendingStorageRef = useRef<string | null>(null);
   const resultUrlRef = useRef<string | null>(null);
   const activeIdRef = useRef(0);
   const dragDepthRef = useRef(0);
@@ -85,7 +89,10 @@ export function VideoWorkspace() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    void sweepStaleTemporaryExports();
     return () => {
+      if (pendingStorageRef.current) void removeTemporaryExport(pendingStorageRef.current);
+      if (resultStorageRef.current) void removeTemporaryExport(resultStorageRef.current);
       workerRef.current?.terminate();
       if (sourceUrlRef.current) URL.revokeObjectURL(sourceUrlRef.current);
       if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current);
@@ -106,11 +113,15 @@ export function VideoWorkspace() {
     activeIdRef.current += 1;
     workerRef.current?.terminate();
     workerRef.current = null;
+    if (pendingStorageRef.current) void removeTemporaryExport(pendingStorageRef.current);
+    pendingStorageRef.current = null;
   }
 
   function clearResult(): void {
     if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current);
     resultUrlRef.current = null;
+    if (resultStorageRef.current) void removeTemporaryExport(resultStorageRef.current);
+    resultStorageRef.current = null;
     setResult(null);
     setPreviewResult(false);
     setPreviewError(false);
@@ -153,8 +164,8 @@ export function VideoWorkspace() {
       setError("That file is empty. Choose a video or audio file.");
       return;
     }
-    if (file.size > MAX_LOCAL_BYTES) {
-      setError("This on-device mode supports files up to 256 MB. A separately self-hosted Native Engine handles eligible larger files after consent.");
+    if (file.size > MAX_STREAMING_BYTES) {
+      setError("This local beta supports files up to 1 GB only when disk-backed browser storage is available. Larger media needs the separately self-hosted Native Engine.");
       return;
     }
     stopWorker();
@@ -175,7 +186,12 @@ export function VideoWorkspace() {
         workerRef.current = null;
         setInfo(message.info);
         setFormat(recommendedLocalFormat(message.info) ?? (message.info.hasVideo ? "mp4" : "mp3"));
-        setStage("ready");
+        if (file.size > MAX_LOCAL_BYTES && !message.info.streamingAvailable) {
+          setError("Your browser cannot reserve temporary storage for this large file. Try a smaller file or the opt-in Native Engine.");
+          setStage("error");
+        } else {
+          setStage("ready");
+        }
       } else if (message.type === "error") {
         workerRef.current?.terminate();
         workerRef.current = null;
@@ -233,15 +249,22 @@ export function VideoWorkspace() {
       } else if (message.type === "complete") {
         // This message only occurs after the engine independently validates
         // the resulting container and streams.
-        const output = new Blob([message.buffer], { type: message.mime });
+        const output = message.file ?? new Blob([message.buffer], { type: message.mime });
         const nextUrl = URL.createObjectURL(output);
         resultUrlRef.current = nextUrl;
+        if (message.storageKey) {
+          resultStorageRef.current = message.storageKey;
+        } else if (pendingStorageRef.current) {
+          void removeTemporaryExport(pendingStorageRef.current);
+        }
+        pendingStorageRef.current = null;
         setResult({
           url: nextUrl,
           name: safeOutputName(source.file.name, message.extension),
           bytes: message.bytes,
           mime: message.mime,
           preset: message.extension,
+          ...(message.storageKey ? { storageKey: message.storageKey } : {}),
         });
         setStage("done");
         setProgress(100);
@@ -256,7 +279,9 @@ export function VideoWorkspace() {
         setError(message.message);
       }
     });
-    worker?.postMessage({ type: "convert", id, file: source.file, preset: format, quality, height });
+    const storageKey = makeTemporaryExportKey(format);
+    pendingStorageRef.current = storageKey;
+    worker?.postMessage({ type: "convert", id, file: source.file, preset: format, quality, height, storageKey });
   }
 
   function cancelConversion(): void {
@@ -455,6 +480,9 @@ export function VideoWorkspace() {
                       </label>
                     ))}
                   </div>
+                  {info.streamingAvailable && (
+                    <p className="settings-note">Disk-backed browser exports are available. Output is saved temporarily on this device and deleted when cleared.</p>
+                  )}
                   {supported.length === 0 && (
                     <p className="settings-note" role="status">
                       This device cannot currently process the required tracks or codecs.
@@ -519,7 +547,7 @@ export function VideoWorkspace() {
               {error && (
                 <div className="error-message" role="alert"><span>Couldn't complete</span><p>{error}</p></div>
               )}
-              <div className="panel-foot"><Icon name="shield" size={17}/><span>Processed locally, stored nowhere.</span></div>
+              <div className="panel-foot"><Icon name="shield" size={17}/><span>Private on-device processing; disk-backed exports use temporary local storage.</span></div>
             </div>
           </aside>
         </div>
@@ -530,11 +558,11 @@ export function VideoWorkspace() {
         </div>
 
         <section className="below-workspace" id="privacy" aria-labelledby="privacy-heading">
-          <div className="below-heading"><span>GOOD TO KNOW</span><h2 id="privacy-heading">Nothing leaves your browser.</h2></div>
+          <div className="below-heading"><span>GOOD TO KNOW</span><h2 id="privacy-heading">No media upload required.</h2></div>
           <div className="below-grid">
-            <div className="below-item"><span className="below-number">01</span><strong>Private by default</strong><p>Your selected media is read and converted locally. We don't upload it to our servers or save it to an account.</p></div>
+            <div className="below-item"><span className="below-number">01</span><strong>Private by default</strong><p>Conversion stays on your device. Disk-backed exports temporarily use your browser's private storage until cleared, with stale-file cleanup.</p></div>
             <div className="below-item"><span className="below-number">02</span><strong>Actual conversion</strong><p>Real encoding, progress and output verification. Download your result when it is ready; no fake completion screens.</p></div>
-            <div className="below-item"><span className="below-number">03</span><strong>Honest compatibility</strong><p>Up to 256 MB for this local release. Available codecs depend on your browser. AI masking and cloud-scale processing are not part of this local release.</p></div>
+            <div className="below-item"><span className="below-number">03</span><strong>Honest compatibility</strong><p>Files up to 256 MB use a bounded memory fallback; experimental disk-backed exports allow up to 1 GB when storage and codecs permit. AI remains separate.</p></div>
           </div>
         </section>
       </main>

@@ -2,6 +2,9 @@ import { BROWSER_FORMATS, planMediaExports } from "@any-convert/media-core";
 import type { BrowserFormatId, MediaFacts } from "@any-convert/media-core";
 
 export const MAX_LOCAL_BYTES = 256 * 1024 * 1024;
+// Experimental upper bound for disk-backed exports when browser quota and
+// file system APIs allow it; not a guarantee of device/codec support.
+export const MAX_STREAMING_BYTES = 1024 * 1024 * 1024;
 
 /** Output labels and presets come from the shared, versioned registry. */
 export const FORMATS = BROWSER_FORMATS.map((format) => ({
@@ -30,6 +33,7 @@ export type MediaInfo = {
   canDecodeVideo: boolean;
   canDecodeAudio: boolean;
   fileBytes: number;
+  streamingAvailable: boolean;
   encoderSupport?: Partial<Record<"avc" | "vp9" | "opus", boolean>>;
 };
 
@@ -41,6 +45,7 @@ export type ConvertRequest = {
   preset: FormatId;
   quality: QualityId;
   height: HeightLimit;
+  storageKey: string; // app-generated, allowlisted OPFS temporary output name
 };
 export type WorkerRequest = InspectRequest | ConvertRequest;
 
@@ -48,7 +53,8 @@ export type WorkerResponse =
   | { type: "inspected"; id: number; info: MediaInfo }
   | { type: "stage"; id: number; stage: "preparing" | "converting" | "verifying" }
   | { type: "progress"; id: number; progress: number }
-  | { type: "complete"; id: number; buffer: ArrayBuffer; mime: string; extension: FormatId; bytes: number }
+  | { type: "complete"; id: number; buffer: ArrayBuffer; file?: never; storageKey?: never; mime: string; extension: FormatId; bytes: number }
+  | { type: "complete"; id: number; file: File; storageKey: string; buffer?: never; mime: string; extension: FormatId; bytes: number }
   | { type: "error"; id: number; message: string };
 
 export function getFormat(id: FormatId) {
@@ -73,7 +79,9 @@ export function validFormats(info: MediaInfo): FormatId[] {
     canDecodeAudio: info.canDecodeAudio,
     ...(info.encoderSupport ? { encoderSupport: info.encoderSupport } : {}),
   };
-  return planMediaExports(media, { localMaxBytes: MAX_LOCAL_BYTES })
+  return planMediaExports(media, {
+    localMaxBytes: info.streamingAvailable ? MAX_STREAMING_BYTES : MAX_LOCAL_BYTES,
+  })
     .filter((plan) => plan.format.browser && plan.browser.status !== "blocked")
     .map((plan) => plan.format.id as FormatId);
 }

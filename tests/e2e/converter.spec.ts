@@ -68,3 +68,44 @@ test("mobile layout keeps import action accessible", async ({ page }) => {
   await expect(importButton).toBeEnabled();
   await expect(page.locator(".main-content")).toBeVisible();
 });
+
+
+test("streaming output is independently verified and temporary storage clears on reset", async ({ page }) => {
+  await page.goto("/");
+  await page.locator('input[type="file"]').setInputFiles(join(fixtureRoot, "baseline-h264-aac.mp4"));
+  await expect(page.getByRole("button", { name: "Convert MP4" })).toBeEnabled({ timeout: 60_000 });
+  const supported = await page.evaluate(async () => {
+    try {
+      const root = await navigator.storage.getDirectory();
+      const dir = await root.getDirectoryHandle("any-convert-temporary-exports", { create: true });
+      const probe = await dir.getFileHandle("probe-ui", { create: true });
+      await (await probe.createWritable()).close();
+      await dir.removeEntry("probe-ui");
+      return true;
+    } catch { return false; }
+  });
+  await page.getByRole("button", { name: "Convert MP4" }).click();
+  await expect(page.getByRole("link", { name: /Download .*mp4/i })).toBeVisible({ timeout: 100_000 });
+  if (supported) {
+    await expect.poll(async () => page.evaluate(async () => {
+      const root = await navigator.storage.getDirectory();
+      const dir = await root.getDirectoryHandle("any-convert-temporary-exports");
+      const names = [];
+      for await (const [name] of dir.entries()) if (name.startsWith("ac-")) names.push(name);
+      return names.length;
+    })).toBe(1);
+  }
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("link", { name: /Download .*mp4/i }).click();
+  await inspectDownload(await downloadPromise, "h264");
+  await page.getByRole("button", { name: /Convert another format/i }).click();
+  if (supported) {
+    await expect.poll(async () => page.evaluate(async () => {
+      const root = await navigator.storage.getDirectory();
+      const dir = await root.getDirectoryHandle("any-convert-temporary-exports");
+      const names = [];
+      for await (const [name] of dir.entries()) if (name.startsWith("ac-")) names.push(name);
+      return names.length;
+    })).toBe(0);
+  }
+});
