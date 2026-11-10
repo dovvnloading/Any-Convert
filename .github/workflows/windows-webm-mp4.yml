@@ -44,7 +44,7 @@ jobs:
       - name: Convert VP9 Opus WebM into verified H264 AAC MP4
         env:
           CI: "true"
-        run: pnpm exec playwright test --grep "VP9 and Opus WebM"
+        run: pnpm exec playwright test --grep "VP9.*WebM"
       - name: Upload failure traces
         if: failure()
         uses: actions/upload-artifact@v4
