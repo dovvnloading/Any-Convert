@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { expect, test } from "@playwright/test";
+import { pasteFixtureFiles } from "./clipboard";
 
 const fixtureRoot = resolve("tests/fixtures/generated");
 
@@ -35,6 +36,33 @@ test("video is inspected, remuxed to MOV, verified and downloaded", async ({ pag
   const downloadPromise = page.waitForEvent("download");
   await downloadLink.click();
   await inspectDownload(await downloadPromise, "h264");
+});
+
+test("pasting a media file imports it without hijacking text fields", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    const textarea = document.createElement("textarea");
+    textarea.id = "paste-text-field";
+    document.body.append(textarea);
+    textarea.focus();
+  });
+  const video = { path: join(fixtureRoot, "baseline-h264-aac.mp4"), mime: "video/mp4" };
+  await pasteFixtureFiles(page, [video], "#paste-text-field");
+  await expect(page.getByRole("heading", { name: "Drop something good." })).toBeVisible();
+
+  // Plain clipboard text must not be consumed by the media importer.
+  const consumedText = await page.evaluate(() => {
+    const clipboard = new DataTransfer();
+    clipboard.setData("text/plain", "not a media file");
+    const event = new ClipboardEvent("paste", {
+      bubbles: true, cancelable: true, clipboardData: clipboard,
+    });
+    document.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  expect(consumedText).toBe(false);
+  await pasteFixtureFiles(page, [video]);
+  await expect(page.getByRole("button", { name: "Convert MP4" })).toBeEnabled({ timeout: 60_000 });
 });
 
 test("audio extracts to real MP3 in browser", async ({ page }) => {
