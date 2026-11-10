@@ -55,7 +55,7 @@ test("video with AC-3 audio can be exported without sound, with actual codec ver
   const convert = page.getByRole("button", { name: "Convert MP4" });
   await expect(convert).toBeEnabled();
   await convert.click();
-  const link = page.getByRole("link", { name: /Download.*no-audio-converted\\.mp4/i });
+  const link = page.getByRole("link", { name: /Download.*no-audio-converted\.mp4/i });
   await expect(link).toBeVisible({ timeout: 120_000 });
   await expect(page.getByText(/Verified output.*video only.*no audio/i)).toBeVisible();
   const downloadPromise = page.waitForEvent("download");
