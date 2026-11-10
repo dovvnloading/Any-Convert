@@ -65,6 +65,13 @@ def make() -> dict[str, dict[str, object]]:
     ffmpeg("-i", str(standard), "-map", "0", "-c", "copy", str(mkv))
     add(mkv.name, "matroska", ["h264", "aac"], (160, 90))
 
+    # Realistic browser failure: H.264 video is usable but AC-3 audio is
+    # commonly unavailable to WebCodecs. The video-only recovery must work.
+    ac3 = OUT / "mkv-h264-ac3.mkv"
+    ffmpeg("-i", str(standard), "-map", "0:v:0", "-map", "0:a:0",
+           "-c:v", "copy", "-c:a", "ac3", "-b:a", "128k", str(ac3))
+    add(ac3.name, "matroska", ["h264", "ac3"], (160, 90))
+
     mov = OUT / "mov-h264-aac.mov"
     ffmpeg("-i", str(standard), "-map", "0", "-c", "copy", str(mov))
     add(mov.name, "mov", ["h264", "aac"], (160, 90))
