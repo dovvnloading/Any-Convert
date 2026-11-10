@@ -3,6 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { expect, test } from "@playwright/test";
+import { pasteFixtureFiles } from "./clipboard";
 
 const fixtureRoot = resolve("tests/fixtures/generated");
 
@@ -39,6 +40,22 @@ test("multi-output batch converts real codecs and downloads a valid ZIP pack", a
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
+});
+
+test("pasted multi-file media is inspected locally and counted per output", async ({ page }) => {
+  await page.goto("/batch");
+  const uploads: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" || request.method() === "PUT") uploads.push(request.url());
+  });
+  await pasteFixtureFiles(page, [
+    { path: join(fixtureRoot, "baseline-h264-aac.mp4"), mime: "video/mp4" },
+    { path: join(fixtureRoot, "pcm-audio.wav"), mime: "audio/wav" },
+  ]);
+  await expect(page.locator(".batch-asset")).toHaveCount(2);
+  await expect(page.getByText("Inspected", { exact: true })).toHaveCount(2, { timeout: 60_000 });
+  await expect(page.getByRole("button", { name: "Run 3 exports" })).toBeEnabled();
+  expect(uploads).toEqual([]);
 });
 
 test("batch preserves accessibility and makes no media upload", async ({ page }) => {
