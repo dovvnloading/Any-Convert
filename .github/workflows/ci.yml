@@ -40,6 +40,9 @@ jobs:
       - name: Unit tests
         run: pnpm test
       - name: Build web
+        env:
+          NEXT_PUBLIC_ENABLE_NATIVE: "true"
+          NATIVE_INTERNAL_URL: "http://127.0.0.1:4300"
         run: pnpm build
       - name: Generate test media
         run: python3 tools/media/generate_fixtures.py
@@ -47,6 +50,18 @@ jobs:
         run: pnpm test:native
       - name: Validate Docker Compose configuration
         run: docker compose --env-file .env.example config --quiet
+      - name: Start native service for browser tests
+        run: |
+          mkdir -p "$RUNNER_TEMP/any-convert-native"
+          HOST=127.0.0.1 PORT=4300 PUBLIC_ORIGIN=http://127.0.0.1:3000 MEDIA_DIR="$RUNNER_TEMP/any-convert-native" nohup node apps/native-service/src/server.mjs > "$RUNNER_TEMP/any-convert-native.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/any-convert-native.pid"
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4300/api/native/health > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          echo "Native service failed to start"
+          cat "$RUNNER_TEMP/any-convert-native.log"
+          exit 1
       - name: Install Chromium for browser integration tests
         run: pnpm exec playwright install --with-deps chromium
       - name: Real conversion browser journey
@@ -55,5 +70,11 @@ jobs:
         env:
           ANY_CONVERT_REQUIRE_WORKER: "1"
         run: pnpm test:media
+      - name: Stop browser-test native service
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/any-convert-native.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/any-convert-native.pid")" || true
+          fi
       - name: Dependency audit
         run: pnpm audit --audit-level high
