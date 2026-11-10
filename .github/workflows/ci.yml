@@ -13,7 +13,7 @@ jobs:
   quality:
     name: Types, lint, tests, build and real media fixtures
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,8 +31,14 @@ jobs:
           sudo apt-get install -y --no-install-recommends ffmpeg
           ffmpeg -version | head -n 1
           ffprobe -version | head -n 1
-      - name: Install dependencies from committed lockfile
-        run: pnpm install --frozen-lockfile
+      # Only during dependency introduction: freeze newly resolved graph in follow-up.
+      - name: Install new media dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Print exact newly resolved lockfile
+        run: |
+          echo BEGIN_CONVERTER_LOCKFILE_B64
+          base64 -w 76 pnpm-lock.yaml
+          echo END_CONVERTER_LOCKFILE_B64
       - name: Typecheck
         run: pnpm typecheck
       - name: Lint
@@ -41,6 +47,10 @@ jobs:
         run: pnpm test
       - name: Build web
         run: pnpm build
+      - name: Install Chromium for browser integration tests
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Real conversion browser journey
+        run: pnpm test:browser
       - name: Real FFmpeg fixture and native-worker integration
         env:
           ANY_CONVERT_REQUIRE_WORKER: "1"

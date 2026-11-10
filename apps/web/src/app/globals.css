@@ -247,3 +247,5 @@ legend { padding: 0; }
   .spinner { animation: none; }
   .light-button, .media-stage, .format-option, .primary-action, .progress-line > span { transition: none; }
 }
+
+.stage-error { max-width: 310px; margin-top: 15px; padding: 10px 12px; border: 1px solid #ad6961; background: #3a2422; color: #ffded9; font-size: 11px; line-height: 1.5; }
