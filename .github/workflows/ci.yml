@@ -31,14 +31,8 @@ jobs:
           sudo apt-get install -y --no-install-recommends ffmpeg
           ffmpeg -version | head -n 1
           ffprobe -version | head -n 1
-      # Only during dependency introduction: freeze newly resolved graph in follow-up.
-      - name: Install new media dependencies
-        run: pnpm install --no-frozen-lockfile
-      - name: Print exact newly resolved lockfile
-        run: |
-          echo BEGIN_CONVERTER_LOCKFILE_B64
-          base64 -w 76 pnpm-lock.yaml
-          echo END_CONVERTER_LOCKFILE_B64
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
       - name: Typecheck
         run: pnpm typecheck
       - name: Lint
