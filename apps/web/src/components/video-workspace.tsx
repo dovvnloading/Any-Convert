@@ -503,7 +503,7 @@ export function VideoWorkspace() {
                   <button type="button" className="text-action" onClick={() => changeFormat(format)}>Convert another format <Icon name="repeat" size={14}/></button>
                 </>
               ) : (
-                <button type="button" className="primary-action" onClick={startConversion} disabled={!info || busy || stage === "inspecting"}>
+                <button type="button" className="primary-action" onClick={startConversion} disabled={!info || busy}>
                   {processing ? prettyStage(stage) : "Convert ".concat(selection.label)} <Icon name={processing ? "pause" : "arrow"}/>
                 </button>
               )}
