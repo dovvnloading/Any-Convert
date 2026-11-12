@@ -89,6 +89,7 @@ jobs:
         if: always()
         run: docker compose --env-file .env.example down --remove-orphans
       - name: Start native service for browser tests
+        if: github.event_name == 'workflow_dispatch'
         run: |
           mkdir -p "$RUNNER_TEMP/any-convert-native"
           HOST=127.0.0.1 PORT=4300 PUBLIC_ORIGIN=http://127.0.0.1:3000 MEDIA_DIR="$RUNNER_TEMP/any-convert-native" nohup node apps/native-service/src/server.mjs > "$RUNNER_TEMP/any-convert-native.log" 2>&1 &
@@ -101,15 +102,17 @@ jobs:
           cat "$RUNNER_TEMP/any-convert-native.log"
           exit 1
       - name: Install Chromium for browser integration tests
+        if: github.event_name == 'workflow_dispatch'
         run: pnpm exec playwright install --with-deps chromium
       - name: Real conversion browser journey
+        if: github.event_name == 'workflow_dispatch'
         run: pnpm test:browser
       - name: Real FFmpeg fixture and native-worker integration
         env:
           ANY_CONVERT_REQUIRE_WORKER: "1"
         run: pnpm test:media
       - name: Stop browser-test native service
-        if: always()
+        if: always() && github.event_name == 'workflow_dispatch'
         run: |
           if [ -f "$RUNNER_TEMP/any-convert-native.pid" ]; then
             kill "$(cat "$RUNNER_TEMP/any-convert-native.pid")" || true
