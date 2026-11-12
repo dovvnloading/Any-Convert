@@ -9,8 +9,52 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same pull request cancels the browser run it left going.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  changes:
+    # Decides whether the browser tests need to run for this change. A job
+    # skipped by its `if` reports success, so required checks never hang.
+    name: Detect browser-relevant changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      browser: ${{ steps.filter.outputs.browser }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Classify the changed files
+        id: filter
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          SKIP_IF: '^(docs/.*|.*\.md|LICENSE|infra/.*|compose\.yaml|\.dockerignore|\.env\.example|\.github/workflows/ci\.yml)$'
+        run: |
+          browser=true
+          changed=""
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            changed=$(git diff --name-only HEAD^1 HEAD)
+          elif [ "$EVENT_NAME" = "push" ] && [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            if git fetch -q --depth=1 origin "$BEFORE"; then changed=$(git diff --name-only "$BEFORE" HEAD); fi
+          fi
+          if [ -n "$changed" ]; then
+            if [ -n "${RUN_IF:-}" ]; then
+              echo "$changed" | grep -qE "$RUN_IF" || browser=false
+            else
+              echo "$changed" | grep -qvE "$SKIP_IF" || browser=false
+            fi
+          fi
+          echo "Changed files:"
+          echo "$changed"
+          echo "browser=$browser" | tee -a "$GITHUB_OUTPUT"
+
   compatibility:
+    needs: changes
+    if: needs.changes.outputs.browser == 'true'
     name: ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 35
